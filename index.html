@@ -749,7 +749,7 @@ function rSchedule(isAdmin=false){
       const ds=myr+"-"+String(mmn+1).padStart(2,"0")+"-"+String(d2).padStart(2,"0");
       mmap[ds]=[];
     }
-    A.allGroups.forEach(g=>{
+    (A.allGroups&&A.allGroups.length?A.allGroups:A.groups).forEach(g=>{
       const coach=A.allCoaches.find(c=>c.id===g.coach_id);
       const isMe=g.coach_id===A.coach?.id;
       (g.days_of_week||[]).forEach(dow=>{
@@ -814,7 +814,7 @@ function rSchedule(isAdmin=false){
           <span>${DL[dow]} ${ff(ds)}</span>
           <span style="display:flex;gap:6px;align-items:center">
             ${isToday?`<span class="badge-t">היום</span>`:""}
-            <button onclick="event.stopPropagation();A.gf=egf();A.gf.days_of_week=[${dow}];A.gf.start_date='${ds}';A.subView='addGroup';renderPage()" style="background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.3);color:var(--blue-light);border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer">+ קבוצה</button>
+            ${isAdmin?`<button onclick="event.stopPropagation();A.gf=egf();A.gf.days_of_week=[${dow}];A.gf.start_date='${ds}';A.subView='addGroup';renderPage()" style="background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.3);color:var(--blue-light);border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer">+ קבוצה</button>`:""}
           </span>
         </div>
         ${items.length===0?`<div style="font-size:12px;color:var(--muted);padding:6px 0 2px;padding-right:4px">אין פעילות</div>`
@@ -831,7 +831,7 @@ function rSchedule(isAdmin=false){
             </div>
             <div style="display:flex;border-top:1px solid var(--border)">
               <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:var(--green);font-size:12px;font-weight:700;cursor:pointer" onclick="openSession('${ds}','${g.id}')">✅ נוכחות</button>
-              <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:#f59e0b;font-size:12px;font-weight:700;cursor:pointer" onclick="quickCancel('${ds}','${g.id}')">⚠️ דחייה</button>
+              ${isAdmin?`<button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:#f59e0b;font-size:12px;font-weight:700;cursor:pointer" onclick="quickCancel('${ds}','${g.id}')">⚠️ דחייה</button>`:""}
               <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:var(--blue-light);font-size:12px;font-weight:700;cursor:pointer" onclick="A.activeGroupId='${g.id}';A.activeDate='${ds}';A.subView='assignSailors';renderPage()">👥 חניכים</button>
               <button style="flex:1;padding:9px 4px;background:none;border:none;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer" onclick="A.activeGroupId='${g.id}';A.activeDate='${ds}';A.subView='groupDetail';renderPage()">📋 פרטים</button>
             </div>
