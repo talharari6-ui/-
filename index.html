@@ -230,6 +230,8 @@ async function loadAll(){
 async function loadScheduleData(){
   A.allCoaches=await dbG("coaches","","name.asc");
   A.allGroups=(await dbG("groups","","name.asc")).map(g=>({...g,days_of_week:g.days_of_week||[]}));
+  // Also refresh coach-specific data (sessions, attendance) if not admin
+  if(A.coach&&!A.isAdmin)await loadAll();
 }
 
 async function loadAdminData(){
