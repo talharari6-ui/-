@@ -134,9 +134,9 @@ select option{background:#0d2444}
 <script>
 const SUPA_URL="https://ukmjspvhvughrdjexqwu.supabase.co";
 const SUPA_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrbWpzcHZodnVnaHJkamV4cXd1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0NTg0NjAsImV4cCI6MjA4ODAzNDQ2MH0.ZnMMPuN6qiC5eMO2c5-t00KX_HKu7ynLzrIaUB9C8dY";
-const ADMIN_IDS=["10","11"]; // ת"ז מנהלים
-const ADMIN_NAMES={"10":"יקרדן סדן","11":"טל הררי"};
-const ADMIN_ID="10"; // backwards compat
+// Admin IDs loaded from DB (coaches with is_admin=true)
+let ADMIN_IDS=[];
+const ADMIN_ID="__none__"; // legacy compat
 const BOATS=["Optimist","RS Feva","RS Toura"];
 const SIZES=["XS","S","M","L","XL","XXL"];
 const COLORS=["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#ec4899"];
@@ -271,19 +271,14 @@ async function tryLogin(){
   const btn=document.getElementById("lbtn");
   btn.disabled=true;btn.innerHTML='טוען... <span class="spin"></span>';
   try{
-    if(ADMIN_IDS.includes(id)){
-      // admin login
-      const aName=ADMIN_NAMES[id]||"מנהל";
-      A.coach={id,name:aName};A.isAdmin=true;
-      ssave();await loadAdminData();showApp();return;
-    }
     const ex=await dbG("coaches",`id=eq.${id}`);
-    if(ex.length){
-      if(ex[0].approved===false){toast("🚫 לא מורשה — פנה למנהל");btn.disabled=false;btn.textContent="כניסה →";return;}
-      A.coach=ex[0];A.isAdmin=false;
-    }else{
-      toast("🚫 לא מורשה — פנה למנהל");btn.disabled=false;btn.textContent="כניסה →";return;
-    }
+    if(!ex.length){toast("🚫 לא מורשה — פנה למנהל");btn.disabled=false;btn.textContent="כניסה →";return;}
+    const coach=ex[0];
+    if(coach.approved===false){toast("🚫 לא מורשה — פנה למנהל");btn.disabled=false;btn.textContent="כניסה →";return;}
+    A.coach=coach;
+    A.isAdmin=!!coach.is_admin;
+    ADMIN_IDS=A.isAdmin?[id]:[];
+    if(A.isAdmin){ssave();await loadAdminData();showApp();return;}
     ssave();await loadAll();showApp();
   }catch(e){toast("❌ "+e.message);btn.disabled=false;btn.textContent="כניסה →";}
 }
@@ -627,7 +622,7 @@ function renderLogin(){
       <button class="btn btn-p" id="lbtn" onclick="tryLogin()" style="margin-top:4px">כניסה →</button>
     </div>
     <p style="text-align:center;color:var(--muted);font-size:11px;margin-top:16px">כל מדריך מתחבר עם ת"ז שלו</p>
-    <p style="text-align:center;color:var(--purple);font-size:11px;margin-top:4px">👑 יקרדן סדן: 10 | טל הררי: 11</p>
+
   `,true);
 }
 let _ct=null;
@@ -1199,7 +1194,7 @@ async function saveAdminCoach(){
     }else{
       const ex=await dbG("coaches",`id=eq.${f.id.trim()}`);
       if(ex.length){toast("⚠️ ת.ז. כבר קיימת");return;}
-      const res=(await dbP("coaches",{id:f.id.trim(),name:fullName,first_name:f.first_name.trim(),last_name:f.last_name.trim(),approved:true}))[0];
+      const res=(await dbP("coaches",{id:f.id.trim(),name:fullName,first_name:f.first_name.trim(),last_name:f.last_name.trim(),approved:true,is_admin:false}))[0];
       A.allCoaches.push(res);toast("✅ מדריך נוסף!");
     }
     A.adminCoachForm={id:"",first_name:"",last_name:""};A.editCoachId=null;A.subView=null;renderPage();
@@ -1212,6 +1207,15 @@ async function toggleApprove(id){
     await dbPa("coaches",`id=eq.${id}`,{approved:next});
     c.approved=next;renderPage();
     toast(next?"✅ מדריך אושר":"🚫 מדריך חסום");
+  }catch(e){toast("❌ "+e.message);}
+}
+async function toggleIsAdmin(id){
+  const c=A.allCoaches.find(x=>x.id===id);if(!c)return;
+  const next=!c.is_admin;
+  try{
+    await dbPa("coaches",`id=eq.${id}`,{is_admin:next});
+    c.is_admin=next;renderPage();
+    toast(next?"👑 הוגדר כמנהל":"👤 הוסר מהגדרת מנהל");
   }catch(e){toast("❌ "+e.message);}
 }
 async function delCoach(id){
@@ -1254,6 +1258,10 @@ function rAdminCoaches(){
             <button onclick="toggleApprove(\'${c.id}\')"
               style="background:${approved?"rgba(52,211,153,0.2)":"rgba(239,68,68,0.15)"};border:1px solid ${approved?"rgba(52,211,153,0.4)":"rgba(239,68,68,0.3)"};color:${approved?"var(--green)":"var(--red)"};border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer">
               ${approved?"✓ מאושר":"✗ חסום"}
+            </button>
+            <button onclick="toggleIsAdmin(\'${c.id}\')"
+              style="background:${c.is_admin?"rgba(124,58,237,0.2)":"rgba(255,255,255,0.06)"};border:1px solid ${c.is_admin?"rgba(124,58,237,0.4)":"var(--border)"};color:${c.is_admin?"var(--purple)":"var(--muted)"};border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer">
+              ${c.is_admin?"👑 מנהל":"👤"}
             </button>
             <button class="btn btn-g btn-sm" onclick="A.adminCoachForm={id:\'${c.id}\',first_name:\'${esc(c.first_name||"")}\',last_name:\'${esc(c.last_name||"")}\' };A.editCoachId=\'${c.id}\';A.subView=\'editCoach\';renderPage()">✏️</button>
             <button class="btn btn-d btn-sm" onclick="delCoach(\'${c.id}\')">✕</button>
@@ -1388,13 +1396,12 @@ function rAdminHours(){
   const last=sloc();
   if(last){
     try{
-      if(ADMIN_IDS.includes(last)){
-        const aName=ADMIN_NAMES[last]||"מנהל";
-        A.coach={id:last,name:aName};A.isAdmin=true;
-        await loadAdminData();showApp();return;
-      }
       const res=await dbG("coaches",`id=eq.${last}`);
-      if(res.length){A.coach=res[0];A.isAdmin=false;await loadAll();showApp();return;}
+      if(res.length&&res[0].approved!==false){
+        A.coach=res[0];A.isAdmin=!!res[0].is_admin;
+        if(A.isAdmin){ADMIN_IDS=[last];await loadAdminData();showApp();return;}
+        await loadAll();showApp();return;
+      }
     }catch(e){}
   }
   renderLogin();
