@@ -708,8 +708,8 @@ function rSchedule(isAdmin=false){
   const todayStr=td();
 
   const map={};days.forEach(d=>{map[toISO(d)]=[];});
-  A.allGroups.forEach(g=>{
-    const coach=A.allCoaches.find(c=>c.id===g.coach_id);
+  (A.allGroups&&A.allGroups.length?A.allGroups:A.groups).forEach(g=>{
+    const coach=(A.allCoaches||[]).find(c=>c.id===g.coach_id);
     const isMe=g.coach_id===A.coach?.id;
     (g.days_of_week||[]).forEach(dow=>{
       const dayD=days.find(d=>d.getDay()===dow);
@@ -816,7 +816,7 @@ function rSchedule(isAdmin=false){
           <span>${DL[dow]} ${ff(ds)}</span>
           <span style="display:flex;gap:6px;align-items:center">
             ${isToday?`<span class="badge-t">היום</span>`:""}
-            ${isAdmin?`<button onclick="event.stopPropagation();A.gf=egf();A.gf.days_of_week=[${dow}];A.gf.start_date='${ds}';A.subView='addGroup';renderPage()" style="background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.3);color:var(--blue-light);border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer">+ קבוצה</button>`:""}
+            <button onclick="event.stopPropagation();A.gf=egf();A.gf.days_of_week=[${dow}];A.gf.start_date='${ds}';A.subView='addGroup';renderPage()" style="background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.3);color:var(--blue-light);border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer">+ קבוצה</button>
           </span>
         </div>
         ${items.length===0?`<div style="font-size:12px;color:var(--muted);padding:6px 0 2px;padding-right:4px">אין פעילות</div>`
