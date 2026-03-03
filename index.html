@@ -302,7 +302,8 @@ function showApp(){
       <button class="nb" id="nav-admin-coaches" onclick="nav('admin-coaches')"><span class="ic">🧑‍🏫</span>מדריכים</button>
       <button class="nb" id="nav-admin-sailors" onclick="nav('admin-sailors')"><span class="ic">👥</span>חניכים</button>
       <button class="nb" id="nav-admin-hours" onclick="nav('admin-hours')"><span class="ic">⏱️</span>שעות</button>
-      <button class="nb" id="nav-admin-schedule" onclick="nav('admin-schedule')"><span class="ic">📅</span>לוח</button>`;
+      <button class="nb" id="nav-admin-schedule" onclick="nav('admin-schedule')"><span class="ic">📅</span>לוח</button>
+      <button class="nb" id="nav-admin-settings" onclick="nav('admin-settings')"><span class="ic">⚙️</span>הגדרות</button>`;
     A.view="admin-overview";nav("admin-overview");
   }else{
     A.view="schedule";A.subView=null;
@@ -318,7 +319,7 @@ function nav(view){
   document.querySelectorAll(".nb").forEach(b=>b.classList.remove("active"));
   const nb=document.getElementById("nav-"+view);if(nb)nb.classList.add("active");
   if(view==="schedule"||view==="admin-schedule")loadScheduleData().then(renderPage);
-  else if(view==="admin-overview"||view==="admin-coaches"||view==="admin-sailors"||view==="admin-hours")loadAdminData().then(renderPage);
+  else if(view==="admin-overview"||view==="admin-coaches"||view==="admin-sailors"||view==="admin-hours"||view==="admin-settings")loadAdminData().then(renderPage);
   else renderPage();
 }
 
@@ -347,14 +348,15 @@ function setC(html,login=false){
 async function saveGroup(){
   const f=A.gf;
   if(!f.name.trim()){toast("⚠️ נא להזין שם קבוצה");return;}
-  const pl={name:f.name.trim(),color:f.color,days_of_week:f.days_of_week,start_time:f.start_time||null,end_time:f.end_time||null};
+  const coachId=f.coach_id||A.coach.id;
+  const pl={name:f.name.trim(),color:f.color,days_of_week:f.days_of_week,start_time:f.start_time||null,end_time:f.end_time||null,start_date:f.start_date||null,coach_id:coachId};
   try{
     if(A.editGId){
       await dbPa("groups",`id=eq.${A.editGId}`,pl);
       const g=getG(A.editGId);if(g)Object.assign(g,pl);
       toast("✅ קבוצה עודכנה");
     }else{
-      const res=await dbP("groups",{coach_id:A.coach.id,...pl});
+      const res=await dbP("groups",pl);
       A.groups.push({...res[0],sailorIds:[],days_of_week:pl.days_of_week});
       toast("✅ קבוצה נוצרה!");
     }
@@ -372,7 +374,7 @@ async function delGroup(id){
 }
 function editGroup(id){
   const g=getG(id);if(!g)return;
-  A.gf={name:g.name,color:g.color,days_of_week:[...(g.days_of_week||[])],start_time:g.start_time||"",end_time:g.end_time||""};
+  A.gf={name:g.name,color:g.color,days_of_week:[...(g.days_of_week||[])],start_time:g.start_time||"",end_time:g.end_time||"",start_date:g.start_date||"",coach_id:g.coach_id||""};
   A.editGId=id;A.subView="editGroup";renderPage();
 }
 function toggleDay(d){
@@ -439,8 +441,7 @@ async function openSession(date,gid){
 
   // Ensure the group is accessible in A.groups for session rendering
   if(!myG&&anyG){
-    // Temporarily add to groups for rendering
-    A.groups.push({...anyG});
+    A.groups.push({...anyG,sailorIds:anyG.sailorIds||[]});
     const sids2=[...new Set([...A.sailors.map(s=>s.id),...sailorIds])];
     if(sailorIds.length){
       const newSailors=await dbG("sailors",`id=in.(${sailorIds.join(",")})`, "last_name.asc");
@@ -602,6 +603,7 @@ function renderPage(){
   else if(A.view==="admin-sailors")setC(rAdminSailors());
   else if(A.view==="admin-hours")setC(rAdminHours());
   else if(A.view==="admin-schedule")setC(rSchedule(true));
+  else if(A.view==="admin-settings")setC(rAdminSettings());
 }
 
 // ── Login ─────────────────────────────────────────────────────
@@ -650,9 +652,14 @@ function rSchedule(isAdmin=false){
     const isMe=g.coach_id===A.coach?.id;
     (g.days_of_week||[]).forEach(dow=>{
       const dayD=days.find(d=>d.getDay()===dow);
-      if(dayD){const ds=toISO(dayD);if(map[ds])map[ds].push({g,coach,isMe});}
+      if(dayD){
+        const ds=toISO(dayD);
+        if(map[ds]&&(!g.start_date||ds>=g.start_date))map[ds].push({g,coach,isMe});
+      }
     });
   });
+  // sort each day by start_time
+  Object.keys(map).forEach(ds=>{map[ds].sort((a,b)=>(a.g.start_time||"99:99").localeCompare(b.g.start_time||"99:99"));});
 
   const navStr=isAdmin?"admin-schedule":"schedule";
   const filterHtml=`
@@ -665,16 +672,68 @@ function rSchedule(isAdmin=false){
       <button class="filter-btn ${A.scheduleFilter==="mine"?"active":""}" onclick="A.scheduleFilter='mine';renderPage()">⭐ שלי</button>`:""}
     </div>`;
 
-  // For day view: show only today or offset day
-  const viewDays = vm==="day" ? [days[Math.floor(days.length/2)]] :
-                   vm==="month" ? (()=>{
-                     const yr=days[0].getFullYear(), mn=days[0].getMonth();
-                     const dim=new Date(yr,mn+1,0).getDate();
-                     return Array.from({length:dim},(_,i)=>new Date(yr,mn,i+1));
-                   })() : days;
-  const titleStr = vm==="day" ? fl(toISO(viewDays[0])) :
-                   vm==="month" ? new Intl.DateTimeFormat("he-IL",{month:"long",year:"numeric"}).format(days[0]) :
-                   ff(toISO(days[0]))+" – "+ff(toISO(days[6]));
+  // compute viewDays and titleStr
+  let viewDays, titleStr, monthCalHTML="";
+  if(vm==="day"){
+    viewDays=[days[Math.floor(days.length/2)]];
+    titleStr=fl(toISO(viewDays[0]));
+  } else if(vm==="month"){
+    const myr=days[0].getFullYear(), mmn=days[0].getMonth();
+    const dim=new Date(myr,mmn+1,0).getDate();
+    const mName=new Intl.DateTimeFormat("he-IL",{month:"long",year:"numeric"}).format(new Date(myr,mmn,1));
+    titleStr=mName;
+    // build calendar grid
+    const firstDow=new Date(myr,mmn,1).getDay(); // 0=sun
+    // build full month map
+    const mmap={};
+    for(let d2=1;d2<=dim;d2++){
+      const ds=myr+"-"+String(mmn+1).padStart(2,"0")+"-"+String(d2).padStart(2,"0");
+      mmap[ds]=[];
+    }
+    A.allGroups.forEach(g=>{
+      const coach=A.allCoaches.find(c=>c.id===g.coach_id);
+      const isMe=g.coach_id===A.coach?.id;
+      (g.days_of_week||[]).forEach(dow=>{
+        for(let d2=1;d2<=dim;d2++){
+          const dt=new Date(myr,mmn,d2);
+          const ds=toISO(dt);
+          if(dt.getDay()===dow&&(!g.start_date||ds>=g.start_date)){
+            if(!A.scheduleFilter||A.scheduleFilter==="all"||isMe||isAdmin)mmap[ds].push({g,coach,isMe});
+          }
+        }
+      });
+    });
+    // day headers
+    const dayHdrs=["א","ב","ג","ד","ה","ו","ש"];
+    let cells="";
+    // empty cells before first
+    for(let i=0;i<firstDow;i++)cells+=`<div></div>`;
+    for(let d2=1;d2<=dim;d2++){
+      const ds=myr+"-"+String(mmn+1).padStart(2,"0")+"-"+String(d2).padStart(2,"0");
+      const isToday=ds===todayStr;
+      let items=mmap[ds]||[];
+      if(!isAdmin&&A.scheduleFilter==="mine")items=items.filter(x=>x.isMe);
+      items.sort((a,b)=>(a.g.start_time||"99:99").localeCompare(b.g.start_time||"99:99"));
+      cells+=`<div style="min-height:60px;border:1px solid var(--border);border-radius:8px;padding:4px;background:${isToday?"rgba(59,130,246,0.08)":"var(--card)"}">
+        <div style="font-size:11px;font-weight:${isToday?"800":"600"};color:${isToday?"var(--blue-light)":"var(--muted)"};margin-bottom:2px">${d2}</div>
+        ${items.map(({g,coach,isMe})=>`<div onclick="A.activeGroupId='${g.id}';A.activeDate='${ds}';A.subView='groupDetail';renderPage()" style="background:${g.color}22;border-right:2px solid ${g.color};border-radius:4px;padding:2px 4px;margin-bottom:2px;cursor:pointer;${isMe||isAdmin?"":"opacity:0.5"}">
+          <div style="font-size:9px;font-weight:700;color:${g.color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(g.name)}</div>
+          ${g.start_time?`<div style="font-size:8px;color:var(--muted)">${g.start_time}</div>`:""}
+        </div>`).join("")}
+      </div>`;
+    }
+    monthCalHTML=`
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px">
+        ${dayHdrs.map(h=>`<div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);padding:4px 0">${h}</div>`).join("")}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">
+        ${cells}
+      </div>`;
+    viewDays=[];
+  } else {
+    viewDays=days;
+    titleStr=ff(toISO(days[0]))+" – "+ff(toISO(days[6]));
+  }
   return`
     <h2 style="font-size:20px;font-weight:800;margin-bottom:10px">📅 לוח</h2>
     ${filterHtml}
@@ -684,6 +743,7 @@ function rSchedule(isAdmin=false){
       <button class="warr" onclick="A.weekOffset++;nav('${navStr}')">&#8592;</button>
     </div>
     ${off!==0?`<button class="btn btn-g btn-sm" style="margin-bottom:12px" onclick="A.weekOffset=0;nav('${navStr}')">↩ היום</button>`:""}
+    ${vm==="month"?monthCalHTML:""}
     ${viewDays.map(d=>{
       const ds=toISO(d);
       let items=map[ds]||[];
@@ -693,7 +753,10 @@ function rSchedule(isAdmin=false){
       return`<div class="dblk">
         <div class="dhdr ${isToday?"today":""}">
           <span>${DL[dow]} ${ff(ds)}</span>
-          ${isToday?`<span class="badge-t">היום</span>`:""}
+          <span style="display:flex;gap:6px;align-items:center">
+            ${isToday?`<span class="badge-t">היום</span>`:""}
+            <button onclick="event.stopPropagation();A.gf=egf();A.gf.days_of_week=[${dow}];A.gf.start_date='${ds}';A.subView='addGroup';renderPage()" style="background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.3);color:var(--blue-light);border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer">+ קבוצה</button>
+          </span>
         </div>
         ${items.length===0?`<div style="font-size:12px;color:var(--muted);padding:6px 0 2px;padding-right:4px">אין פעילות</div>`
         :items.map(({g,coach,isMe})=>`
@@ -782,14 +845,14 @@ function rHours(){
       <button class="warr" onclick="prevMonth()">&#8594;</button>
       <div style="text-align:center">
         <div style="font-size:15px;font-weight:800">${mName}</div>
-        <div style="font-size:12px;color:var(--green);font-weight:700">${fmtH(monthTotal)} החודש</div>
+        <div id="month-total" style="font-size:12px;color:var(--green);font-weight:700">${fmtH(monthTotal)} החודש</div>
       </div>
       <button class="warr" onclick="nextMonth()">&#8592;</button>
     </div>
     
     <div style="background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.15);border-radius:10px;padding:8px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:12px;color:var(--muted)">סה"כ כל הזמנים</span>
-      <span style="font-size:16px;font-weight:800;color:var(--green)">${fmtH(grandTotal)}</span>
+      <span id="grand-total" style="font-size:16px;font-weight:800;color:var(--green)">${fmtH(grandTotal)}</span>
     </div>
     
     <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px">
@@ -816,24 +879,21 @@ function nextMonth(){
 // pending save timers per date
 const _hTimers={};
 function autoSaveHours(date,field,value){
-  // update local state immediately
   let rec=A.workHours.find(h=>h.date===date);
-  if(!rec){
-    rec={id:null,coach_id:A.coach.id,date,start_time:"",end_time:"",notes:""};
-    A.workHours.push(rec);
-  }
+  if(!rec){rec={id:null,coach_id:A.coach.id,date,start_time:"",end_time:"",notes:""};A.workHours.push(rec);}
   rec[field]=value;
-  // update hours display inline
+  // update hours span inline
   if(rec.start_time&&rec.end_time){
     const h=calcHours(rec.start_time,rec.end_time);
-    // find the hours span — re-render just that row label
     const st=document.getElementById("st-"+date);
-    if(st){
-      const span=st.parentElement.querySelector("span[style*='min-width:32px']");
-      if(span&&h>0){span.textContent=fmtH(h);span.style.color="var(--green)";}
-    }
+    if(st){const span=st.parentElement.querySelector("span[style*='min-width:32px']");if(span){span.textContent=h>0?fmtH(h):"";span.style.color="var(--green)";}}
   }
-  // debounce save
+  // update month total and grand total inline
+  const mKey=date.substr(0,7);
+  const mTotal=A.workHours.filter(h=>h.date.startsWith(mKey)).reduce((s,h)=>s+calcHours(h.start_time,h.end_time),0);
+  const gTotal=A.workHours.reduce((s,h)=>s+calcHours(h.start_time,h.end_time),0);
+  const mEl=document.getElementById("month-total");if(mEl)mEl.textContent=fmtH(mTotal)+" החודש";
+  const gEl=document.getElementById("grand-total");if(gEl)gEl.textContent=fmtH(gTotal);
   clearTimeout(_hTimers[date]);
   _hTimers[date]=setTimeout(()=>persistHours(date),800);
 }
@@ -928,10 +988,10 @@ function rSettings(){
       <div class="stitle" style="margin-bottom:0">הקבוצות שלי</div>
       <button class="btn btn-p btn-sm" onclick="A.gf=egf();A.subView='addGroup';renderPage()">+ קבוצה חדשה</button>
     </div>
-    ${A.groups.length===0?`<div style="text-align:center;padding:40px 0;color:var(--muted)">
+    ${[...A.groups].sort((a,b)=>(a.start_time||"99:99").localeCompare(b.start_time||"99:99")).length===0?`<div style="text-align:center;padding:40px 0;color:var(--muted)">
       <div style="font-size:40px;margin-bottom:12px">🏊</div><p>עוד לא הגדרת קבוצות</p>
       <button class="btn btn-p btn-sm" style="margin-top:12px" onclick="A.gf=egf();A.subView='addGroup';renderPage()">צור קבוצה ראשונה</button>
-    </div>`:A.groups.map(g=>{
+    </div>`:[...A.groups].sort((a,b)=>(a.start_time||"99:99").localeCompare(b.start_time||"99:99")).map(g=>{
       const dayStr=(g.days_of_week||[]).map(d=>DS[d]).join(" ");
       const timeStr=g.start_time?(g.start_time+(g.end_time?"–"+g.end_time:"")):"";
       return`<div class="gcard" onclick="A.activeGroupId='${g.id}';A.subView='groupDetail';renderPage()">
@@ -968,10 +1028,11 @@ function rGroupDetail(){
     ${dayStr?`<div style="font-size:12px;color:var(--muted);margin-bottom:2px">📆 ${dayStr}${timeStr?" · ⏰ "+timeStr:""}</div>`:""}
     ${A.activeDate?`<div style="font-size:13px;font-weight:700;color:var(--blue-light);margin-bottom:2px">📌 ${fl(A.activeDate)}</div>`:""}
     <div style="height:12px"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
       <button class="btn btn-p" onclick="openSession(A.activeDate||td(),'${g.id}')">${attendBtn}</button>
       <button class="btn btn-g" onclick="A.subView='assignSailors';renderPage()">👥 נהל חניכים</button>
     </div>
+    <button class="btn btn-g btn-sm" style="margin-bottom:14px" onclick="editGroup('${g.id}')">✏️ ערוך פרטי קבוצה</button>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
       <button class="btn btn-ex btn-sm" onclick="exportGroup('${g.id}')">📥 Excel</button>
       <button class="btn btn-sh btn-sm" onclick="exportGroup('${g.id}');setTimeout(()=>window.open('https://sheets.new','_blank'),400)">📊 Sheets</button>
@@ -1102,6 +1163,11 @@ function rGroupForm(){
         ${COLORS.map(c=>`<div class="cdot" data-color="${c}" onclick="setGCol('${c}')" style="width:32px;height:32px;border-radius:50%;background:${c};cursor:pointer;outline:${c===f.color?"3px solid white":"none"};outline-offset:2px"></div>`).join("")}
       </div>
     </div>
+    ${A.isAdmin?`<div class="fg"><label class="fl">מדריך</label>
+      <select class="fi" onchange="A.gf.coach_id=this.value">
+        ${A.allCoaches.filter(c=>!c.is_admin).map(c=>`<option value="${c.id}" ${f.coach_id===c.id?"selected":""}>${esc(c.name)}</option>`).join("")}
+      </select>
+    </div>`:""}
     <div class="fg"><label class="fl">ימי פעילות</label>
       <div class="dpick">${DS.map((n,i)=>`<button class="dpill ${(f.days_of_week||[]).includes(i)?"active":""}" data-day="${i}" onclick="toggleDay(${i})">${n}</button>`).join("")}</div>
       <div style="font-size:11px;color:var(--muted);margin-top:6px">א׳=ראשון, ב׳=שני, ג׳=שלישי, ד׳=רביעי, ה׳=חמישי, ו׳=שישי, ש׳=שבת</div>
@@ -1111,6 +1177,10 @@ function rGroupForm(){
         <div><label class="fl" style="font-size:11px">התחלה</label><input type="time" class="fi" value="${esc(f.start_time)}" onchange="A.gf.start_time=this.value"></div>
         <div><label class="fl" style="font-size:11px">סיום</label><input type="time" class="fi" value="${esc(f.end_time)}" onchange="A.gf.end_time=this.value"></div>
       </div>
+    </div>
+    <div class="fg"><label class="fl">תאריך תחילת פעילות</label>
+      <input type="date" class="fi" value="${esc(f.start_date)}" onchange="A.gf.start_date=this.value">
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">הקבוצה תופיע בלוח מתאריך זה</div>
     </div>
     <button class="btn btn-p" onclick="saveGroup()">${isEdit?"💾 שמור שינויים":"✅ צור קבוצה"}</button>
   `;
@@ -1452,6 +1522,74 @@ function rAdminHours(){
       </div>`;
     }).join("")}
   `;
+}
+
+// ── Admin Settings ───────────────────────────────────────────
+function rAdminSettings(){
+  if(A.subView==="addGroup"||A.subView==="editGroup")return rGroupForm();
+  if(A.subView==="groupDetail"){
+    // use allGroups for admin
+    const g=A.allGroups.find(x=>x.id===A.activeGroupId);
+    if(!g){A.subView=null;renderPage();return"";}
+    const coach=A.allCoaches.find(c=>c.id===g.coach_id);
+    const sailors=A.allSailors.filter(s=>(g.sailorIds||[]).includes(s.id));
+    const dayStr=(g.days_of_week||[]).map(d=>DL[d]).join(", ");
+    const timeStr=g.start_time?(g.start_time+(g.end_time?"–"+g.end_time:"")):"";
+    return`
+      <button class="bbtn" onclick="A.subView=null;A.activeGroupId=null;renderPage()">← חזרה</button>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="width:14px;height:14px;border-radius:50%;background:${g.color}"></div>
+        <h2 style="font-size:20px;font-weight:800">${esc(g.name)}</h2>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">🧑‍🏫 ${esc(coach?.name||"")}${dayStr?" · 📆 "+dayStr:""}${timeStr?" · ⏰ "+timeStr:""}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+        <button class="btn btn-p" onclick="openSession(A.activeDate||td(),'${g.id}')">✅ נוכחות</button>
+        <button class="btn btn-g" onclick="A.gf={name:'${g.name.replace(/'/g,"\'")}',color:'${g.color}',days_of_week:[...(${JSON.stringify(g.days_of_week||[])})],start_time:'${g.start_time||""}',end_time:'${g.end_time||""}',start_date:'${g.start_date||""}',coach_id:'${g.coach_id||""}'};A.editGId='${g.id}';A.subView='editGroup';renderPage()">✏️ ערוך</button>
+      </div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px">חניכים (${sailors.length})</div>
+      ${sailors.map(s=>`<div class="scard">
+        <div class="av av-${s.gender==="female"?"f":"m"}">${s.gender==="female"?"👧":"👦"}</div>
+        <div style="flex:1"><div style="font-weight:700;font-size:14px">${esc(s.first_name)} ${esc(s.last_name)}</div>
+        <div style="font-size:11px;color:var(--muted)">🚢 ${s.boat}</div></div>
+      </div>`).join("")}
+    `;
+  }
+  // main settings view
+  const allG=[...A.allGroups].sort((a,b)=>(a.start_time||"99:99").localeCompare(b.start_time||"99:99"));
+  return`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="font-size:20px;font-weight:800">⚙️ ניהול קבוצות</h2>
+      <button class="btn btn-p btn-sm" onclick="A.gf=egf();A.editGId=null;A.subView='addGroup';renderPage()">+ קבוצה חדשה</button>
+    </div>
+    ${allG.map(g=>{
+      const coach=A.allCoaches.find(c=>c.id===g.coach_id);
+      const dayStr=(g.days_of_week||[]).map(d=>DS[d]).join(" ");
+      const timeStr=g.start_time?(g.start_time+(g.end_time?"–"+g.end_time:"")):"";
+      return`<div class="gcard" onclick="A.activeGroupId='${g.id}';A.subView='groupDetail';renderPage()">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:12px;height:12px;border-radius:50%;background:${g.color};flex-shrink:0"></div>
+            <div>
+              <div style="font-weight:800;font-size:15px">${esc(g.name)}</div>
+              <div style="font-size:11px;color:var(--muted)">🧑‍🏫 ${esc(coach?.name||"")}${dayStr?" · "+dayStr:""}${timeStr?" · "+timeStr:""}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px" onclick="event.stopPropagation()">
+            <button class="btn btn-g btn-sm" onclick="A.gf={name:'${g.name.replace(/'/g,"\'")}',color:'${g.color}',days_of_week:[...(${JSON.stringify(g.days_of_week||[])})],start_time:'${g.start_time||""}',end_time:'${g.end_time||""}',start_date:'${g.start_date||""}',coach_id:'${g.coach_id||""}'};A.editGId='${g.id}';A.subView='editGroup';renderPage()">✏️</button>
+            <button class="btn btn-d btn-sm" onclick="delGroupAdmin('${g.id}')">מחק</button>
+          </div>
+        </div>
+      </div>`;
+    }).join("")}
+  `;
+}
+async function delGroupAdmin(id){
+  if(!confirm("למחוק קבוצה זו?"))return;
+  try{
+    await dbD("groups",`id=eq.${id}`);
+    A.allGroups=A.allGroups.filter(g=>g.id!==id);
+    renderPage();toast("🗑️ נמחקה");
+  }catch(e){toast("❌ "+e.message);}
 }
 
 // ── Init ──────────────────────────────────────────────────────
