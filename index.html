@@ -162,9 +162,19 @@ async function sb(path,method="GET",body=null){
   const h={"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":method==="POST"?"return=representation":""};
   const opts={method,headers:h};
   if(body)opts.body=JSON.stringify(body);
-  const res=await fetch(SUPA_URL+"/rest/v1/"+path,opts);
-  if(!res.ok){const e=await res.text();throw new Error(e);}
-  const t=await res.text();return t?JSON.parse(t):null;
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),12000);
+  opts.signal=controller.signal;
+  try{
+    const res=await fetch(SUPA_URL+"/rest/v1/"+path,opts);
+    clearTimeout(timer);
+    if(!res.ok){const e=await res.text();throw new Error(e);}
+    const t=await res.text();return t?JSON.parse(t):null;
+  }catch(e){
+    clearTimeout(timer);
+    if(e.name==="AbortError")throw new Error("⏱️ תם הזמן — בדוק חיבור לאינטרנט");
+    throw e;
+  }
 }
 const dbG=(t,q="",o="created_at.asc")=>sb(t+"?"+q+(o?"&order="+o:""));
 const dbP=(t,b)=>sb(t,"POST",b);
@@ -1658,13 +1668,16 @@ async function delGroupAdmin(id){
   const last=sloc();
   if(last){
     try{
-      const res=await dbG("coaches",`id=eq.${last}`);
-      if(res.length&&res[0].approved!==false){
+      const res=await dbG("coaches","id=eq."+last);
+      if(res&&res.length&&res[0].approved!==false){
         A.coach=res[0];A.isAdmin=!!res[0].is_admin;
         if(A.isAdmin){ADMIN_IDS=[last];await loadAdminData();showApp();return;}
         await loadAll();showApp();return;
       }
-    }catch(e){}
+    }catch(e){
+      console.error("Init error:",e);
+      toast("⚠️ שגיאת חיבור: "+e.message);
+    }
   }
   renderLogin();
 })();
