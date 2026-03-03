@@ -499,8 +499,6 @@ async function checkNewCoach(){
 // ── Home ──────────────────────────────────────────────────────
 function renderHome(){
   const total=new Set(APP.groups.flatMap(g=>g.sailorIds)).size;
-  const todayDow=new Date().getDay();
-  const todayGroups=APP.groups.filter(g=>(g.days_of_week||[]).includes(todayDow));
   return `
     <h2 style="font-size:22px;font-weight:800;margin-bottom:4px">⚙️ הגדרות</h2>
     <p style="color:var(--muted);font-size:13px;margin-bottom:16px">שלום, ${esc(APP.coach?.name)}</p>
@@ -509,7 +507,6 @@ function renderHome(){
       <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-val" style="color:var(--green)">${total}</div><div class="stat-label">חניכים</div></div>
       <div class="stat-card"><div class="stat-icon">📅</div><div class="stat-val" style="color:var(--yellow)">${APP.sessions.length}</div><div class="stat-label">מפגשים</div></div>
     </div>
-
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <div class="section-title" style="margin-bottom:0">הקבוצות שלי</div>
       <button class="btn btn-primary btn-sm" onclick="APP.groupForm=emptyGF();APP.subView='addGroup';renderPage()">+ קבוצה חדשה</button>
@@ -518,10 +515,9 @@ function renderHome(){
       <div style="font-size:40px;margin-bottom:12px">🏊</div><p>עוד לא הגדרת קבוצות</p>
       <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="APP.groupForm=emptyGF();APP.subView='addGroup';renderPage()">צור קבוצה ראשונה</button>
     </div>`:APP.groups.map(g=>{
-      const recent=[...groupSessions(g.id)].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
       const dayStr=(g.days_of_week||[]).map(d=>DAYS_SHORT[d]).join(" ");
       const timeStr=g.start_time?(g.start_time+(g.end_time?"–"+g.end_time:"")):"";
-      return `<div class="group-card" onclick="APP.activeGroupId='${g.id}';APP.activeDate='${ds}';APP.subView='groupDetail';renderPage()">
+      return `<div class="group-card" onclick="APP.activeGroupId='${g.id}';APP.subView='groupDetail';renderPage()">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div style="display:flex;align-items:center;gap:10px">
             <div style="width:12px;height:12px;border-radius:50%;background:${g.color};flex-shrink:0"></div>
@@ -535,10 +531,6 @@ function renderHome(){
         <div style="font-size:12px;color:var(--muted);margin-top:4px">
           ${g.sailorIds.length} חניכים · ${groupSessions(g.id).length} מפגשים${dayStr?" · "+dayStr:""}${timeStr?" · "+timeStr:""}
         </div>
-        ${recent.length?`<div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap">
-          ${recent.map(s=>{const cnt=Object.values(APP.attendance[s.id]||{}).filter(Boolean).length;
-            return `<span style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:2px 8px;font-size:11px;color:var(--blue-light)">📅 ${fmtShort(s.date)} · ${cnt}/${g.sailorIds.length}</span>`;
-          }).join("")}</div>`:""}
       </div>`;
     }).join("")}
   `;
