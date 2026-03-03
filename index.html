@@ -155,7 +155,7 @@ let A={
   hForm:{date:td(),start_time:"",end_time:"",notes:""},editHId:null,
 };
 function ef(){return{first_name:"",last_name:"",birth_date:"",join_date:td(),shirt_size:"M",parent_name:"",parent_phone:"",gender:"male",boat:"Optimist"};}
-function egf(){return{name:"",color:COLORS[0],days_of_week:[],start_time:"",end_time:""};}
+function egf(){return{name:"",color:COLORS[0],days_of_week:[],start_time:"",end_time:"",start_date:"",coach_id:A.coach&&A.coach.id||""};}
 
 // ── Supabase ──────────────────────────────────────────────────
 async function sb(path,method="GET",body=null){
@@ -503,6 +503,65 @@ function promptCancel(){
   if(reason===null)return;
   cancelSession(reason);
 }
+async function quickCancel(date,gid){
+  var sess=A.sessions.find(function(s){return s.date===date&&s.group_id===gid;});
+  if(!sess){
+    var g=getG(gid);if(!g)return;
+    try{
+      var res=(await dbP("sessions",{group_id:gid,date:date,created_by:A.coach.id}))[0];
+      sess=res;A.sessions.push(sess);
+      if(A.allSessions)A.allSessions.push(sess);
+      A.attendance[sess.id]={};
+    }catch(e){toast("❌ "+e.message);return;}
+  }
+  if(sess.cancelled){
+    try{
+      await dbPa("sessions","id=eq."+sess.id,{cancelled:false,cancel_reason:null});
+      sess.cancelled=false;sess.cancel_reason=null;
+      delete A.cancellations[sess.id];
+      renderPage();toast("✅ דחייה בוטלה");
+    }catch(e){toast("❌ "+e.message);}
+    return;
+  }
+  var reason=prompt("סיבת דחייה (אופציונלי):");
+  if(reason===null)return;
+  try{
+    await dbPa("sessions","id=eq."+sess.id,{cancelled:true,cancel_reason:reason||null});
+    sess.cancelled=true;sess.cancel_reason=reason||null;
+    A.cancellations[sess.id]=true;
+    renderPage();toast("⚠️ פעילות סומנה כדחויה");
+  }catch(e){toast("❌ "+e.message);}
+}
+function showDayMenu(date,evt){
+  document.getElementById("day-menu")&&document.getElementById("day-menu").remove();
+  var groups=(A.allGroups&&A.allGroups.length?A.allGroups:A.groups)||[];
+  var dow=new Date(date+"T00:00:00").getDay();
+  var items=groups.filter(function(g){return(g.days_of_week||[]).indexOf(dow)>=0&&(!g.start_date||date>=g.start_date);});
+  if(!items.length){toast("אין קבוצות ביום זה");return;}
+  var menu=document.createElement("div");
+  menu.id="day-menu";
+  menu.style.cssText="position:fixed;z-index:500;background:#0d2444;border:1px solid rgba(255,255,255,0.15);border-radius:12px;padding:8px;min-width:200px;box-shadow:0 8px 32px rgba(0,0,0,0.6)";
+  var r=evt.target.getBoundingClientRect();
+  menu.style.top=(r.bottom+6)+"px";
+  menu.style.left=Math.max(8,r.left-80)+"px";
+  var title=document.createElement("div");
+  title.style.cssText="font-size:11px;font-weight:800;color:var(--muted);padding:4px 8px 8px";
+  title.textContent="⚠️ סמן כדחוי — "+date;
+  menu.appendChild(title);
+  items.forEach(function(g){
+    var s=A.sessions.find(function(x){return x.date===date&&x.group_id===g.id;});
+    var canc=s&&s.cancelled;
+    var row=document.createElement("div");
+    row.style.cssText="padding:9px 10px;cursor:pointer;border-radius:8px;font-size:13px;color:"+(canc?"#f59e0b":"var(--text)")+";font-weight:"+(canc?"700":"400");
+    row.textContent=(canc?"✓ ":"")+g.name;
+    row.onmouseover=function(){this.style.background="rgba(255,255,255,0.07)";};
+    row.onmouseout=function(){this.style.background="";};
+    row.onclick=function(){menu.remove();quickCancel(date,g.id);};
+    menu.appendChild(row);
+  });
+  document.body.appendChild(menu);
+  setTimeout(function(){document.addEventListener("click",function h(){menu.remove();document.removeEventListener("click",h);});},100);
+}
 async function toggleAll(){
   const sess=A.activeSession;if(!sess)return;
   const att=A.attendance[sess.id]||{};const ids=Object.keys(att);
@@ -761,6 +820,7 @@ function rSchedule(isAdmin=false){
         ${items.length===0?`<div style="font-size:12px;color:var(--muted);padding:6px 0 2px;padding-right:4px">אין פעילות</div>`
         :items.map(({g,coach,isMe})=>`
           <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;border-right:3px solid ${g.color};${isMe||isAdmin?"":"opacity:0.55"}overflow:hidden">
+            ${(function(){var _s=A.sessions.find(function(x){return x.date===ds&&x.group_id===g.id;});return _s&&_s.cancelled?'<div style="background:rgba(245,158,11,0.1);padding:4px 12px;font-size:11px;font-weight:700;color:#f59e0b;border-bottom:1px solid rgba(245,158,11,0.2)">'+"⚠️ דחוי"+(_s.cancel_reason?" · "+esc(_s.cancel_reason):"")+'</div>':""})()}
             <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer" onclick="A.activeGroupId='${g.id}';A.activeDate='${ds}';A.subView='groupDetail';renderPage()">
               <div style="width:8px;height:8px;border-radius:50%;background:${g.color};flex-shrink:0"></div>
               <div style="flex:1;min-width:0">
@@ -771,6 +831,7 @@ function rSchedule(isAdmin=false){
             </div>
             <div style="display:flex;border-top:1px solid var(--border)">
               <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:var(--green);font-size:12px;font-weight:700;cursor:pointer" onclick="openSession('${ds}','${g.id}')">✅ נוכחות</button>
+              <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:#f59e0b;font-size:12px;font-weight:700;cursor:pointer" onclick="quickCancel('${ds}','${g.id}')">⚠️ דחייה</button>
               <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:var(--blue-light);font-size:12px;font-weight:700;cursor:pointer" onclick="A.activeGroupId='${g.id}';A.activeDate='${ds}';A.subView='assignSailors';renderPage()">👥 חניכים</button>
               <button style="flex:1;padding:9px 4px;background:none;border:none;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer" onclick="A.activeGroupId='${g.id}';A.activeDate='${ds}';A.subView='groupDetail';renderPage()">📋 פרטים</button>
             </div>
@@ -831,6 +892,7 @@ function rHours(){
           onchange="autoSaveHours('${dateStr}','notes',this.value)"
           id="nt-${dateStr}">
         ${rec&&rec.start_time&&rec.end_time?`<button onclick="showCopyModal('${dateStr}')" style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:var(--blue-light);border-radius:8px;padding:6px 8px;font-size:12px;cursor:pointer;white-space:nowrap">📋</button>`:""}
+        <span id="sv-${dateStr}" style="font-size:10px;color:var(--green);font-weight:700;opacity:0;transition:opacity 0.3s;min-width:40px">✓ נשמר</span>
       </div>
     </div>`;
   }
@@ -909,8 +971,10 @@ async function persistHours(date){
       const res=(await dbP("work_hours",{coach_id:A.coach.id,date,start_time:rec.start_time,end_time:rec.end_time,notes:rec.notes||null}))[0];
       rec.id=res.id;
     }
-    const st=document.getElementById("st-"+date);
-    if(st){const el=st.closest("div[style*='padding:10px 0']");if(el){el.style.borderColor="rgba(52,211,153,0.4)";setTimeout(()=>{if(el)el.style.borderColor="";},1500);}}
+    var st2=document.getElementById("st-"+date);
+    if(st2){var el2=st2.parentElement;if(el2){el2.style.background="rgba(52,211,153,0.08)";setTimeout(function(){if(el2)el2.style.background="";},1500);}}
+    var savedEl=document.getElementById("sv-"+date);
+    if(savedEl){savedEl.textContent="✓ נשמר";savedEl.style.opacity="1";setTimeout(function(){if(savedEl)savedEl.style.opacity="0";},2000);}
   }catch(e){toast("❌ שגיאת שמירה");}
 }
 
