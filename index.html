@@ -186,7 +186,7 @@ function gSailors(gid){const g=getG(gid);if(!g)return[];return(g.sailorIds||[]).
 function gSess(gid){return A.sessions.filter(s=>s.group_id===gid);}
 function aRate(sailor,sessions){
   const jd=sailor.join_date||"2000-01-01";
-  const rel=sessions.filter(s=>s.date>=jd&&A.attendance[s.id]&&A.attendance[s.id][sailor.id]!==undefined);
+  const rel=sessions.filter(s=>s.date>=jd&&!s.cancelled&&A.attendance[s.id]&&A.attendance[s.id][sailor.id]!==undefined);
   if(!rel.length)return null;
   return Math.round(rel.filter(s=>A.attendance[s.id][sailor.id]).length/rel.length*100);
 }
@@ -223,6 +223,8 @@ async function loadAll(){
   }
   // work hours
   A.workHours=await dbG("work_hours",`coach_id=eq.${cid}`,"date.desc");
+  A.cancellations={};
+  A.sessions.forEach(s=>{if(s.cancelled)A.cancellations[s.id]=true;});
 }
 
 async function loadScheduleData(){
@@ -238,6 +240,8 @@ async function loadAdminData(){
   // work hours all
   const wh=await dbG("work_hours","","date.desc");
   A.workHours=wh;
+  A.cancellations={};
+  A.allSessions.forEach(s=>{if(s.cancelled)A.cancellations[s.id]=true;});
   // attendance for all sessions
   const sids=A.allSessions.map(s=>s.id);
   A.allAttendance={};
@@ -274,10 +278,11 @@ async function tryLogin(){
       ssave();await loadAdminData();showApp();return;
     }
     const ex=await dbG("coaches",`id=eq.${id}`);
-    if(ex.length){A.coach=ex[0];A.isAdmin=false;}
-    else{
-      if(!name){toast("⚠️ נא להזין שמך");btn.disabled=false;btn.textContent="כניסה →";return;}
-      A.coach=(await dbP("coaches",{id,name}))[0];A.isAdmin=false;
+    if(ex.length){
+      if(ex[0].approved===false){toast("🚫 לא מורשה — פנה למנהל");btn.disabled=false;btn.textContent="כניסה →";return;}
+      A.coach=ex[0];A.isAdmin=false;
+    }else{
+      toast("🚫 לא מורשה — פנה למנהל");btn.disabled=false;btn.textContent="כניסה →";return;
     }
     ssave();await loadAll();showApp();
   }catch(e){toast("❌ "+e.message);btn.disabled=false;btn.textContent="כניסה →";}
@@ -332,6 +337,8 @@ function goBack(){
     if(A.view==="schedule")loadScheduleData().then(renderPage);else renderPage();
   }
   else if(A.subView==="addHours"||A.subView==="editHours"){A.subView=null;A.editHId=null;renderPage();}
+  else if(A.subView==="addCoach"||A.subView==="editCoach"){A.subView=null;A.editCoachId=null;renderPage();}
+  else if(A.subView==="addAdminSailor"||A.subView==="editAdminSailor"){A.subView=null;A.editId=null;A.form=ef();renderPage();}
   else nav(A.view);
 }
 
@@ -483,6 +490,23 @@ async function toggleAtt(sid){
   try{await dbPa("attendance",`session_id=eq.${sess.id}&sailor_id=eq.${sid}`,{present:next});}
   catch(e){toast("❌ שגיאת שמירה");}
 }
+async function cancelSession(reason){
+  const sess=A.activeSession;if(!sess)return;
+  const cancelled=!sess.cancelled;
+  try{
+    await dbPa("sessions",`id=eq.${sess.id}`,{cancelled,cancel_reason:cancelled?(reason||null):null});
+    const s=A.sessions.find(x=>x.id===sess.id);
+    if(s){s.cancelled=cancelled;s.cancel_reason=reason||null;}
+    A.activeSession={...A.activeSession,cancelled,cancel_reason:reason||null};
+    if(cancelled)A.cancellations[sess.id]=true;else delete A.cancellations[sess.id];
+    renderPage();toast(cancelled?"⚠️ פעילות סומנה כדחויה":"✅ דחייה בוטלה");
+  }catch(e){toast("❌ "+e.message);}
+}
+function promptCancel(){
+  const reason=prompt("סיבת דחייה (אופציונלי):");
+  if(reason===null)return;
+  cancelSession(reason);
+}
 async function toggleAll(){
   const sess=A.activeSession;if(!sess)return;
   const att=A.attendance[sess.id]||{};const ids=Object.keys(att);
@@ -547,6 +571,23 @@ function exportHours(){
   const rows=[["תאריך","כניסה","יציאה","שעות","הערות"],...A.workHours.map(h=>[h.date,h.start_time,h.end_time,calcHours(h.start_time,h.end_time).toFixed(1),h.notes||""])];
   dlCSV(toCSV(rows),`שעות_${A.coach?.name||""}_${td()}.csv`);toast("📥 הורד!");
 }
+function exportAllHours(){
+  const rows=[["מדריך","תאריך","כניסה","יציאה","שעות","הערות"]];
+  A.allCoaches.forEach(c=>{
+    A.workHours.filter(h=>h.coach_id===c.id).sort((a,b)=>a.date.localeCompare(b.date))
+      .forEach(h=>rows.push([c.name,h.date,h.start_time,h.end_time,calcHours(h.start_time,h.end_time).toFixed(1),h.notes||""]));
+  });
+  dlCSV(toCSV(rows),`שעות_כל_המדריכים_${td()}.csv`);toast("📥 הורד!");
+}
+function exportCancellations(){
+  const rows=[["מדריך","קבוצה","תאריך","סיבה"]];
+  A.allSessions.filter(s=>s.cancelled).sort((a,b)=>b.date.localeCompare(a.date)).forEach(s=>{
+    const g=A.allGroups.find(x=>x.id===s.group_id);
+    const c=A.allCoaches.find(x=>x.id===g?.coach_id);
+    rows.push([c?.name||"",g?.name||"",s.date,s.cancel_reason||""]);
+  });
+  dlCSV(toCSV(rows),`דחיות_${td()}.csv`);toast("📥 הורד!");
+}
 
 // ── Render ────────────────────────────────────────────────────
 function renderPage(){
@@ -586,7 +627,7 @@ function renderLogin(){
       <button class="btn btn-p" id="lbtn" onclick="tryLogin()" style="margin-top:4px">כניסה →</button>
     </div>
     <p style="text-align:center;color:var(--muted);font-size:11px;margin-top:16px">כל מדריך מתחבר עם ת"ז שלו</p>
-    <p style="text-align:center;color:var(--purple);font-size:11px;margin-top:4px">👑 מנהלים: יקרדן (10) | טל (11)</p>
+    <p style="text-align:center;color:var(--purple);font-size:11px;margin-top:4px">👑 יקרדן סדן: 10 | טל הררי: 11</p>
   `,true);
 }
 let _ct=null;
@@ -1052,7 +1093,9 @@ function rSession(){
 function rHistory(){
   if(!A.groups.length)return`<h2 style="font-size:20px;font-weight:800;margin-bottom:20px">📊 היסטוריה</h2>
     <div style="text-align:center;padding:60px 0;color:var(--muted)"><div style="font-size:48px">📊</div><p>עוד אין נתונים</p></div>`;
-  return`<h2 style="font-size:20px;font-weight:800;margin-bottom:16px">📊 היסטוריה</h2>
+  const myCancelled=A.sessions.filter(s=>s.cancelled).sort((a,b)=>b.date.localeCompare(a.date));
+  const cb=myCancelled.length?`<div class="card" style="border-right:3px solid var(--yellow);margin-bottom:16px"><div style="font-weight:800;font-size:14px;color:var(--yellow);margin-bottom:8px">⚠️ פעילויות שדחיתי (${myCancelled.length})</div>${myCancelled.map(s=>{const g=getG(s.group_id);return`<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-weight:600">${esc(g?.name||"")} · ${ff(s.date)}</span><span style="color:var(--muted)">${s.cancel_reason?esc(s.cancel_reason):"ללא סיבה"}</span></div>`;}).join("")}</div>`:"";
+  return`<h2 style="font-size:20px;font-weight:800;margin-bottom:16px">📊 היסטוריה</h2>${cb}
     ${A.groups.map(g=>{
       const sess=gSess(g.id).sort((a,b)=>a.date.localeCompare(b.date));
       const sailors=gSailors(g.id);
@@ -1110,6 +1153,17 @@ function rAdminOverview(){
       <div class="sc"><div class="si">✅</div><div class="sv" style="color:var(--green)">${totalAtt}</div><div class="sl">נוכחויות</div></div>
       <div class="sc"><div class="si">⏱️</div><div class="sv" style="color:var(--blue-light)">${fmtH(totalHours)}</div><div class="sl">שעות</div></div>
     </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div class="stitle" style="margin-bottom:0">⚠️ דחיות פעילות</div>
+      <button class="btn btn-ex btn-sm" onclick="exportCancellations()">📥 ייצוא</button>
+    </div>
+    ${(()=>{const canc=A.allSessions.filter(s=>s.cancelled).sort((a,b)=>b.date.localeCompare(a.date));
+      if(!canc.length)return`<div style="font-size:12px;color:var(--muted);margin-bottom:14px;padding:6px 0">אין דחיות מתועדות</div>`;
+      return`<div class="card" style="margin-bottom:14px">${canc.slice(0,10).map(s=>{const g=A.allGroups.find(x=>x.id===s.group_id);const c=A.allCoaches.find(x=>x.id===g?.coach_id);
+        return`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+          <div><span style="color:var(--yellow);font-weight:700">⚠️ ${esc(g?.name||"")}</span> · ${esc(c?.name||"")}</div>
+          <div style="color:var(--muted)">${ff(s.date)}${s.cancel_reason?" · "+esc(s.cancel_reason):""}</div>
+        </div>`;}).join("")}</div>`;})()}
     <div class="stitle">מדריכים — סיכום שעות</div>
     ${A.allCoaches.map(c=>{
       const cHours=A.workHours.filter(h=>h.coach_id===c.id).reduce((s,h)=>s+calcHours(h.start_time,h.end_time),0);
@@ -1131,15 +1185,80 @@ function rAdminOverview(){
   `;
 }
 
-function rAdminCoaches(){
+async function saveAdminCoach(){
+  const f=A.adminCoachForm;
+  if(!f.id.trim()||!f.first_name.trim()||!f.last_name.trim()){toast("⚠️ נא למלא ת.ז., שם ושם משפחה");return;}
+  if(ADMIN_IDS.includes(f.id.trim())){toast("⚠️ ת.ז. זו שמורה למנהל");return;}
+  const fullName=f.first_name.trim()+" "+f.last_name.trim();
+  try{
+    if(A.editCoachId){
+      await dbPa("coaches",`id=eq.${A.editCoachId}`,{name:fullName,first_name:f.first_name.trim(),last_name:f.last_name.trim()});
+      const c=A.allCoaches.find(x=>x.id===A.editCoachId);
+      if(c){c.name=fullName;c.first_name=f.first_name.trim();c.last_name=f.last_name.trim();}
+      toast("✅ מדריך עודכן");
+    }else{
+      const ex=await dbG("coaches",`id=eq.${f.id.trim()}`);
+      if(ex.length){toast("⚠️ ת.ז. כבר קיימת");return;}
+      const res=(await dbP("coaches",{id:f.id.trim(),name:fullName,first_name:f.first_name.trim(),last_name:f.last_name.trim(),approved:true}))[0];
+      A.allCoaches.push(res);toast("✅ מדריך נוסף!");
+    }
+    A.adminCoachForm={id:"",first_name:"",last_name:""};A.editCoachId=null;A.subView=null;renderPage();
+  }catch(e){toast("❌ "+e.message);}
+}
+async function toggleApprove(id){
+  const c=A.allCoaches.find(x=>x.id===id);if(!c)return;
+  const next=!c.approved;
+  try{
+    await dbPa("coaches",`id=eq.${id}`,{approved:next});
+    c.approved=next;renderPage();
+    toast(next?"✅ מדריך אושר":"🚫 מדריך חסום");
+  }catch(e){toast("❌ "+e.message);}
+}
+async function delCoach(id){
+  if(!confirm("למחוק מדריך זה?"))return;
+  try{await dbD("coaches",`id=eq.${id}`);A.allCoaches=A.allCoaches.filter(c=>c.id!==id);renderPage();toast("🗑️ נמחק");}
+  catch(e){toast("❌ "+e.message);}
+}
+function rAdminCoachForm(){
+  const f=A.adminCoachForm;const isEdit=!!A.editCoachId;
   return`
-    <h2 style="font-size:20px;font-weight:800;margin-bottom:16px">🧑‍🏫 מדריכים</h2>
+    <button class="bbtn" onclick="A.subView=null;A.editCoachId=null;renderPage()">← חזרה</button>
+    <h2 style="font-size:20px;font-weight:800;margin-bottom:20px">${isEdit?"✏️ עריכת מדריך":"+ הוסף מדריך"}</h2>
+    <div class="fg"><label class="fl">תעודת זהות${isEdit?" (לא ניתן לשינוי)":""}</label>
+      <input class="fi" value="${esc(f.id)}" ${isEdit?"disabled style=\"opacity:0.5\"":""} oninput="A.adminCoachForm.id=this.value" placeholder="מספר ת.ז." inputmode="numeric"></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">שם פרטי</label><input class="fi" value="${esc(f.first_name)}" oninput="A.adminCoachForm.first_name=this.value"></div>
+      <div class="fg"><label class="fl">שם משפחה</label><input class="fi" value="${esc(f.last_name)}" oninput="A.adminCoachForm.last_name=this.value"></div>
+    </div>
+    <button class="btn btn-p" onclick="saveAdminCoach()">${isEdit?"💾 שמור":"✅ הוסף מדריך"}</button>
+  `;
+}
+function rAdminCoaches(){
+  if(A.subView==="addCoach"||A.subView==="editCoach")return rAdminCoachForm();
+  return`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="font-size:20px;font-weight:800">🧑‍🏫 מדריכים</h2>
+      <button class="btn btn-p btn-sm" onclick="A.adminCoachForm={id:\'\',first_name:\'\',last_name:\'\'};A.editCoachId=null;A.subView=\'addCoach\';renderPage()">+ הוסף</button>
+    </div>
     ${A.allCoaches.map(c=>{
       const cGroups=A.allGroups.filter(g=>g.coach_id===c.id);
       const cSailors=new Set(cGroups.flatMap(g=>g.sailorIds||[])).size;
+      const approved=c.approved!==false;
       return`<div class="card">
-        <div style="font-weight:800;font-size:15px;margin-bottom:6px">🧑‍🏫 ${esc(c.name)} <span style="font-size:11px;color:var(--muted);font-weight:400">ת"ז: ${c.id}</span></div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">${cGroups.length} קבוצות · ${cSailors} חניכים</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div>
+            <div style="font-weight:800;font-size:15px">🧑‍🏫 ${esc(c.name)}</div>
+            <div style="font-size:11px;color:var(--muted)">ת"ז: ${c.id} · ${cGroups.length} קבוצות · ${cSailors} חניכים</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button onclick="toggleApprove(\'${c.id}\')"
+              style="background:${approved?"rgba(52,211,153,0.2)":"rgba(239,68,68,0.15)"};border:1px solid ${approved?"rgba(52,211,153,0.4)":"rgba(239,68,68,0.3)"};color:${approved?"var(--green)":"var(--red)"};border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer">
+              ${approved?"✓ מאושר":"✗ חסום"}
+            </button>
+            <button class="btn btn-g btn-sm" onclick="A.adminCoachForm={id:\'${c.id}\',first_name:\'${esc(c.first_name||"")}\',last_name:\'${esc(c.last_name||"")}\' };A.editCoachId=\'${c.id}\';A.subView=\'editCoach\';renderPage()">✏️</button>
+            <button class="btn btn-d btn-sm" onclick="delCoach(\'${c.id}\')">✕</button>
+          </div>
+        </div>
         ${cGroups.length?`<div style="display:flex;gap:5px;flex-wrap:wrap">${cGroups.map(g=>`
           <div style="background:${g.color}22;border:1px solid ${g.color}55;border-radius:8px;padding:4px 10px;font-size:11px;color:${g.color};font-weight:700">
             ${esc(g.name)}${g.start_time?" · "+g.start_time+(g.end_time?"–"+g.end_time:""):""}
@@ -1149,9 +1268,64 @@ function rAdminCoaches(){
   `;
 }
 
-function rAdminSailors(){
+async function saveAdminSailor(){
+  const f=A.form;
+  if(!f.first_name.trim()||!f.last_name.trim()){toast("⚠️ נא למלא שם");return;}
+  try{
+    if(A.editId){
+      await dbPa("sailors",`id=eq.${A.editId}`,{...f});
+      const i=A.allSailors.findIndex(s=>s.id===A.editId);if(i>=0)A.allSailors[i]={...A.allSailors[i],...f};
+      toast("✅ עודכן");
+    }else{
+      const ns=(await dbP("sailors",{...f}))[0];A.allSailors.push(ns);toast("✅ חניך נוסף!");
+    }
+    A.form=ef();A.editId=null;A.subView=null;renderPage();
+  }catch(e){toast("❌ "+e.message);}
+}
+async function delAdminSailor(id){
+  if(!confirm("למחוק חניך זה?"))return;
+  try{await dbD("sailors",`id=eq.${id}`);A.allSailors=A.allSailors.filter(s=>s.id!==id);renderPage();}
+  catch(e){toast("❌ "+e.message);}
+}
+function rAdminSailorForm(){
+  const f=A.form;const isEdit=!!A.editId;
   return`
-    <h2 style="font-size:20px;font-weight:800;margin-bottom:16px">👥 כל החניכים (${A.allSailors.length})</h2>
+    <button class="bbtn" onclick="A.subView=null;A.editId=null;A.form=ef();renderPage()">← חזרה</button>
+    <h2 style="font-size:20px;font-weight:800;margin-bottom:20px">${isEdit?"✏️ עריכת חניך":"+ הוסף חניך"}</h2>
+    <div class="frow">
+      <div class="fg"><label class="fl">שם פרטי *</label><input class="fi" value="${esc(f.first_name)}" oninput="A.form.first_name=this.value"></div>
+      <div class="fg"><label class="fl">שם משפחה *</label><input class="fi" value="${esc(f.last_name)}" oninput="A.form.last_name=this.value"></div>
+    </div>
+    <div class="fg"><label class="fl">מגדר</label>
+      <div class="trow">
+        <button class="tbtn ${f.gender==="male"?"active":""}" data-g="male" onclick="setGender(\'male\')">👦 בן</button>
+        <button class="tbtn ${f.gender==="female"?"active":""}" data-g="female" onclick="setGender(\'female\')">👧 בת</button>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">סירה</label>
+      <select class="fi" onchange="A.form.boat=this.value">${BOATS.map(b=>`<option ${f.boat===b?"selected":""}>${b}</option>`).join("")}</select>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">תאריך לידה</label><input type="date" class="fi" value="${esc(f.birth_date)}" onchange="A.form.birth_date=this.value"></div>
+      <div class="fg"><label class="fl">הצטרפות</label><input type="date" class="fi" value="${esc(f.join_date||td())}" onchange="A.form.join_date=this.value"></div>
+    </div>
+    <div class="fg"><label class="fl">מידת חולצה</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${SIZES.map(sz=>`<button class="spill ${f.shirt_size===sz?"active":""}" data-s="${sz}" onclick="setSize(\'${sz}\')">${sz}</button>`).join("")}</div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">שם הורה</label><input class="fi" value="${esc(f.parent_name)}" oninput="A.form.parent_name=this.value"></div>
+      <div class="fg"><label class="fl">טלפון הורה</label><input type="tel" class="fi" value="${esc(f.parent_phone)}" oninput="A.form.parent_phone=this.value"></div>
+    </div>
+    <button class="btn btn-p" onclick="saveAdminSailor()">${isEdit?"💾 שמור שינויים":"✅ הוסף חניך"}</button>
+  `;
+}
+function rAdminSailors(){
+  if(A.subView==="addAdminSailor"||A.subView==="editAdminSailor")return rAdminSailorForm();
+  return`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="font-size:20px;font-weight:800">👥 חניכים (${A.allSailors.length})</h2>
+      <button class="btn btn-p btn-sm" onclick="A.form=ef();A.editId=null;A.subView=\'addAdminSailor\';renderPage()">+ הוסף</button>
+    </div>
     ${A.allSailors.map(s=>{
       const groups=A.allGroups.filter(g=>(g.sailorIds||[]).includes(s.id));
       return`<div class="scard">
@@ -1160,6 +1334,10 @@ function rAdminSailors(){
           <div style="font-weight:700;font-size:14px">${esc(s.first_name)} ${esc(s.last_name)}</div>
           <div style="font-size:11px;color:var(--muted)">🚢 ${s.boat} · 👕 ${s.shirt_size}</div>
           ${groups.length?`<div style="margin-top:3px">${groups.map(g=>`<span style="background:${g.color}22;border:1px solid ${g.color}55;border-radius:6px;padding:1px 6px;font-size:10px;color:${g.color};margin-left:3px">${esc(g.name)}</span>`).join("")}</div>`:""}
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-g btn-sm" onclick="A.form={...A.allSailors.find(x=>x.id===\'${s.id}\')};A.editId=\'${s.id}\';A.subView=\'editAdminSailor\';renderPage()">✏️</button>
+          <button class="btn btn-d btn-sm" onclick="delAdminSailor(\'${s.id}\')">✕</button>
         </div>
       </div>`;
     }).join("")}
@@ -1170,7 +1348,7 @@ function rAdminSailors(){
 function rAdminHours(){
   // group by coach
   return`
-    <h2 style="font-size:20px;font-weight:800;margin-bottom:16px">⏱️ שעות מדריכים</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h2 style="font-size:20px;font-weight:800">⏱️ שעות מדריכים</h2><button class="btn btn-ex btn-sm" onclick="exportAllHours()">📥 ייצוא</button></div>
     ${A.allCoaches.map(c=>{
       const cHours=A.workHours.filter(h=>h.coach_id===c.id);
       const total=cHours.reduce((s,h)=>s+calcHours(h.start_time,h.end_time),0);
