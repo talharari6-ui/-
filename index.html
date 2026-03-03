@@ -2,7 +2,6 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src * blob: data: 'unsafe-inline' 'unsafe-eval'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -144,6 +143,7 @@ const COLORS=["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#ec48
 const DS=["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","ש׳"];
 const DL=["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
 
+function egf(){return{name:"",color:COLORS[0],days_of_week:[],start_time:"",end_time:"",start_date:"",coach_id:""};}
 let A={
   coach:null,isAdmin:false,
   groups:[],sailors:[],sessions:[],attendance:{},
@@ -156,7 +156,6 @@ let A={
   hForm:{date:td(),start_time:"",end_time:"",notes:""},editHId:null,
 };
 function ef(){return{first_name:"",last_name:"",birth_date:"",join_date:td(),shirt_size:"M",parent_name:"",parent_phone:"",gender:"male",boat:"Optimist"};}
-function egf(){return{name:"",color:COLORS[0],days_of_week:[],start_time:"",end_time:"",start_date:"",coach_id:(typeof A!=="undefined"&&A.coach)?A.coach.id:""};}
 
 // ── Supabase ──────────────────────────────────────────────────
 async function sb(path,method="GET",body=null){
