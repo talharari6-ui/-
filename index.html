@@ -262,7 +262,9 @@ function navigate(view){
   APP.view=view;APP.subView=null;
   document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
   const nb=document.getElementById("nav-"+view); if(nb)nb.classList.add("active");
-  if(view==="schedule") loadScheduleData().then(renderPage); else renderPage();
+if(view==="schedule") loadScheduleData().then(renderPage); 
+  else if(view==="home") renderPage();
+  else renderPage();
 }
 function goBack(){
   if(APP.subView==="addSailor"||APP.subView==="editSailor"){APP.subView=null;APP.editId=null;renderPage();}
