@@ -1298,7 +1298,7 @@ function rSailorForm(){
   const f=A.form;const isEdit=!!A.editId;
   const g=A.activeGroupId?getG(A.activeGroupId):null;
   return`
-    <button class="bbtn" onclick="A.editId=null;A.subView=A.activeGroupId?'groupDetail':null;renderPage()">${g?"← חזרה לקבוצה":"← חזרה"}</button>
+    <button class="bbtn" onclick="A.editId=null;A.subView=null;A.activeSession=null;nav('schedule')">${g?"← חזרה לקבוצה":"← חזרה"}</button>
     <h2 style="font-size:20px;font-weight:800;margin-bottom:20px">${isEdit?"✏️ עריכת חניך":"⛵ הוסף חניך חדש"}</h2>
     ${g&&!isEdit?`<div style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);border-radius:10px;padding:8px 12px;margin-bottom:14px;font-size:12px;color:var(--blue-light)">✓ יתווסף אוטומטית לקבוצה ${esc(g.name)}</div>`:""}
     <div class="frow">
