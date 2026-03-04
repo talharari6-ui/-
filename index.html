@@ -986,8 +986,9 @@ function autoSaveHours(date,field,value){
 
 async function persistHours(date){
   const rec=A.workHours.find(h=>h.date===date);
+  console.log("persistHours called:",date,"rec:",rec);
   if(!rec)return;
-  if(!rec.start_time&&!rec.end_time&&!rec.notes)return;
+  if(!rec.start_time&&!rec.end_time&&!rec.notes){console.log("persistHours: nothing to save");return;}
   try{
     if(rec.id){
       await dbPa("work_hours",`id=eq.${rec.id}`,{start_time:rec.start_time||null,end_time:rec.end_time||null,notes:rec.notes||null});
@@ -999,7 +1000,7 @@ async function persistHours(date){
     if(st2){var el2=st2.parentElement;if(el2){el2.style.background="rgba(52,211,153,0.08)";setTimeout(function(){if(el2)el2.style.background="";},1500);}}
     var savedEl=document.getElementById("sv-"+date);
     if(savedEl){savedEl.textContent="✓ נשמר";savedEl.style.opacity="1";setTimeout(function(){if(savedEl)savedEl.style.opacity="0";},2000);}
-  }catch(e){console.error("persistHours error:",e);toast("❌ שגיאת שמירה: "+e.message);}
+  }catch(e){console.error("persistHours FULL ERROR:",e,JSON.stringify(e));toast("❌ "+e.message);}
 }
 
 function showCopyModal(date){
