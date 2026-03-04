@@ -1667,7 +1667,7 @@ async function delGroupAdmin(id){
       if(res.length&&res[0].approved!==false){
         A.coach=res[0];A.isAdmin=!!res[0].is_admin;
         if(A.isAdmin){ADMIN_IDS=[last];await loadAdminData();showApp();return;}
-        await loadAll();showApp();return;
+        await loadAll();await loadScheduleData();showApp();return;
       }
     }catch(e){}
   }
