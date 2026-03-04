@@ -555,17 +555,13 @@ async function toggleAtt(sid){
   try{await dbPa("attendance",`session_id=eq.${sess.id}&sailor_id=eq.${sid}`,{present:next});}
   catch(e){toast("❌ שגיאת שמירה");}
 }
-async function setAbsenceReason(sid){
+async function saveAbsenceReason(sid, reason){
   const sess=A.activeSession;if(!sess)return;
-  const cur=A.absenceReasons?.[sess.id]?.[sid]||"";
-  const reason=prompt("סיבת היעדרות:",cur);
-  if(reason===null)return;
   if(!A.absenceReasons[sess.id])A.absenceReasons[sess.id]={};
   A.absenceReasons[sess.id][sid]=reason;
   try{
     await dbPa("attendance",`session_id=eq.${sess.id}&sailor_id=eq.${sid}`,{absence_reason:reason||null});
   }catch(e){toast("❌ שגיאת שמירה");}
-  renderPage();
 }
 
 
@@ -1546,15 +1542,23 @@ function rSession(){
     ${ids.map(sid=>{
       const s=A.sailors.find(x=>x.id===sid);const p=att[sid];
       const absReason=A.absenceReasons?.[sess.id]?.[sid]||"";
-      return`<div id="arow-${sid}" class="arow ${p?"present":"absent"}">
-        <div onclick="toggleAtt('${sid}')" style="display:flex;align-items:center;gap:10px;flex:1">
-          <div class="av av-${s?.gender==="female"?"f":"m"}" style="width:38px;height:38px;font-size:18px">${s?.gender==="female"?"👧":"👦"}</div>
-          <div style="flex:1"><div style="font-weight:700;font-size:15px">${s?esc(s.first_name)+" "+esc(s.last_name):"?"}</div>
-            <div style="font-size:11px;color:var(--muted)">${s?.boat||""}${!p&&absReason?` · <span style="color:#f59e0b">${esc(absReason)}</span>`:""}</div>
+      return`<div id="arow-${sid}" class="arow ${p?"present":"absent"}" style="flex-direction:column;align-items:stretch;padding:8px 12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div onclick="toggleAtt('${sid}')" style="display:flex;align-items:center;gap:10px;flex:1;cursor:pointer">
+            <div class="av av-${s?.gender==="female"?"f":"m"}" style="width:38px;height:38px;font-size:18px">${s?.gender==="female"?"👧":"👦"}</div>
+            <div style="flex:1"><div style="font-weight:700;font-size:15px">${s?esc(s.first_name)+" "+esc(s.last_name):"?"}</div>
+              <div style="font-size:11px;color:var(--muted)">${s?.boat||""}</div>
+            </div>
           </div>
+          <div id="achk-${sid}" onclick="toggleAtt('${sid}')" class="achk ${p?"present":"absent"}" style="cursor:pointer">${p?"✓":"✗"}</div>
         </div>
-        ${!p?`<button onclick="setAbsenceReason('${sid}')" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:8px;padding:3px 8px;font-size:11px;cursor:pointer">${absReason?"✏️":"+ סיבה"}</button>`:""}
-        <div id="achk-${sid}" onclick="toggleAtt('${sid}')" class="achk ${p?"present":"absent"}" style="cursor:pointer">${p?"✓":"✗"}</div>
+        ${!p?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.07)">
+          <input id="abs-reason-${sid}" type="text" value="${esc(absReason)}"
+            placeholder="סיבת היעדרות (אופציונלי)..."
+            onchange="saveAbsenceReason('${sid}',this.value)"
+            onclick="event.stopPropagation()"
+            style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:5px 10px;font-size:12px;color:var(--text);direction:rtl;box-sizing:border-box"/>
+        </div>`:""}
       </div>`;
     }).join("")}
     <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--muted)">💾 נשמר אוטומטית לשרת</div>`}
