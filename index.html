@@ -135,6 +135,16 @@ select option{background:#0d2444}
   </nav>
 </div>
 <div class="toast" id="toast"></div>
+<div id="sub-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;width:300px;max-width:90vw">
+    <h3 style="font-weight:800;font-size:18px;margin-bottom:16px">🔄 בחר מדריך מחליף</h3>
+    <div id="sub-list" style="max-height:250px;overflow-y:auto;margin-bottom:16px"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-g" style="flex:1" onclick="closeSubModal()">ביטול</button>
+      <button class="btn btn-d btn-sm" id="sub-clear-btn" onclick="clearSubstitute()" style="display:none">הסר החלפה</button>
+    </div>
+  </div>
+</div>
 <script>
 const SUPA_URL="https://ukmjspvhvughrdjexqwu.supabase.co";
 const SUPA_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrbWpzcHZodnVnaHJkamV4cXd1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0NTg0NjAsImV4cCI6MjA4ODAzNDQ2MH0.ZnMMPuN6qiC5eMO2c5-t00KX_HKu7ynLzrIaUB9C8dY";
@@ -548,13 +558,75 @@ async function cancelSession(reason){
     if(s){s.cancelled=cancelled;s.cancel_reason=reason||null;}
     A.activeSession={...A.activeSession,cancelled,cancel_reason:reason||null};
     if(cancelled)A.cancellations[sess.id]=true;else delete A.cancellations[sess.id];
-    renderPage();toast(cancelled?"⚠️ פעילות סומנה כדחויה":"✅ דחייה בוטלה");
+    // If cancelled - clear work hours for this date
+    if(cancelled){
+      const g=getG(sess.group_id);
+      const hr=A.workHours.find(h=>h.date===sess.date&&h.coach_id===A.coach?.id);
+      if(hr){
+        await dbPa("work_hours",`id=eq.${hr.id}`,{start_time:null,end_time:null,notes:"דחייה אוטומטית"});
+        hr.start_time=null;hr.end_time=null;
+      }
+    }
+    renderPage();toast(cancelled?"⚠️ פעילות סומנה כדחויה — שעות נמחקו":"✅ דחייה בוטלה");
   }catch(e){toast("❌ "+e.message);}
 }
 function promptCancel(){
   const reason=prompt("סיבת דחייה (אופציונלי):");
   if(reason===null)return;
   cancelSession(reason);
+}
+
+async function substituteSession(date, groupId){
+  A._subDate=date; A._subGroupId=groupId;
+  const sess=A.sessions.find(s=>s.group_id===groupId&&s.date===date);
+  const coaches=(A.allCoaches||[]).filter(x=>x.id!==A.coach?.id);
+  const list=document.getElementById("sub-list");
+  const clearBtn=document.getElementById("sub-clear-btn");
+  if(!list)return;
+  list.innerHTML=coaches.map(coach=>`
+    <div onclick="selectSubstitute('${coach.id}')" style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;cursor:pointer;border:1px solid ${sess?.substitute_coach_id===coach.id?"var(--blue)":"var(--border)"};margin-bottom:6px;background:${sess?.substitute_coach_id===coach.id?"rgba(59,130,246,0.1)":"transparent"}">
+      ${coachAvatar(coach,32)}
+      <span style="font-weight:700">${esc(coach.name)}</span>
+      ${sess?.substitute_coach_id===coach.id?"<span style='margin-right:auto;color:var(--blue);font-size:12px'>✓ נבחר</span>":""}
+    </div>`).join("");
+  if(clearBtn) clearBtn.style.display=sess?.substitute_coach_id?"block":"none";
+  const modal=document.getElementById("sub-modal");
+  if(modal){modal.style.display="flex";}
+}
+
+function closeSubModal(){
+  const modal=document.getElementById("sub-modal");
+  if(modal)modal.style.display="none";
+}
+
+async function selectSubstitute(coachId){
+  const date=A._subDate; const groupId=A._subGroupId;
+  const sub=A.allCoaches.find(x=>x.id===coachId);
+  try{
+    let sess=A.sessions.find(s=>s.group_id===groupId&&s.date===date);
+    if(!sess){
+      const res=await dbP("sessions",{group_id:groupId,date,substitute_coach_id:coachId,coach_note:""});
+      sess=res[0];A.sessions.push(sess);
+    } else {
+      await dbPa("sessions",`id=eq.${sess.id}`,{substitute_coach_id:coachId});
+      sess.substitute_coach_id=coachId;
+    }
+    closeSubModal();renderPage();
+    toast("🔄 "+sub?.name+" הוגדר כמחליף");
+  }catch(e){toast("❌ "+e.message);}
+}
+
+async function clearSubstitute(){
+  const date=A._subDate; const groupId=A._subGroupId;
+  try{
+    const sess=A.sessions.find(s=>s.group_id===groupId&&s.date===date);
+    if(sess){
+      await dbPa("sessions",`id=eq.${sess.id}`,{substitute_coach_id:null});
+      sess.substitute_coach_id=null;
+    }
+    closeSubModal();renderPage();
+    toast("✅ החלפה הוסרה");
+  }catch(e){toast("❌ "+e.message);}
 }
 async function quickCancel(date,gid){
   var sess=A.sessions.find(function(s){return s.date===date&&s.group_id===gid;});
@@ -880,7 +952,7 @@ function rSchedule(isAdmin=false){
         ${items.length===0?`<div style="font-size:12px;color:var(--muted);padding:6px 0 2px;padding-right:4px">אין פעילות</div>`
         :items.map(({g,coach,isMe})=>`
           <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;border-right:3px solid ${g.color};${isMe||isAdmin?"":"opacity:0.55"}overflow:hidden">
-            ${(function(){var _s=A.sessions.find(function(x){return x.date===ds&&x.group_id===g.id;});return _s&&_s.cancelled?'<div style="background:rgba(245,158,11,0.1);padding:4px 12px;font-size:11px;font-weight:700;color:#f59e0b;border-bottom:1px solid rgba(245,158,11,0.2)">'+"⚠️ דחוי"+(_s.cancel_reason?" · "+esc(_s.cancel_reason):"")+'</div>':""})()}
+            ${(function(){var _s=A.sessions.find(function(x){return x.date===ds&&x.group_id===g.id;});return (_s&&_s.cancelled?'<div style="background:rgba(245,158,11,0.1);padding:4px 12px;font-size:11px;font-weight:700;color:#f59e0b;border-bottom:1px solid rgba(245,158,11,0.2)">'+"⚠️ דחוי"+(_s.cancel_reason?" · "+esc(_s.cancel_reason):"")+'</div>':"") + (_s&&_s.substitute_coach_id?(function(){var _sub=(A.allCoaches||[]).find(function(x){return x.id===_s.substitute_coach_id;});return '<div style="background:rgba(167,139,250,0.1);padding:4px 12px;font-size:11px;font-weight:700;color:#a78bfa;border-bottom:1px solid rgba(167,139,250,0.2)">🔄 מחליף: '+esc(_sub?_sub.name:"")+'</div>';})():"")})()}
             <div style="display:flex;align-items:center;gap:10px;padding:10px 12px">
               <div style="width:8px;height:8px;border-radius:50%;background:${g.color};flex-shrink:0"></div>
               <div style="flex:1;min-width:0">
@@ -890,8 +962,9 @@ function rSchedule(isAdmin=false){
               
             </div>
             <div style="display:flex;border-top:1px solid var(--border)">
-              <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:var(--green);font-size:12px;font-weight:700;cursor:pointer" onclick="openSession('${ds}','${g.id}')">✅ נוכחות</button>
+              <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:var(--green);font-size:12px;font-weight:700;cursor:pointer" onclick="openSession('${ds}','${g.id}')" ${(function(){var _sx=A.sessions.find(x=>x.date===ds&&x.group_id===g.id);return _sx&&_sx.cancelled?"disabled style='opacity:0.35;cursor:not-allowed;pointer-events:none'":""})()}>✅ נוכחות</button>
               <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:#f59e0b;font-size:12px;font-weight:700;cursor:pointer" onclick="quickCancel('${ds}','${g.id}')">⚠️ דחייה</button>
+              <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:#a78bfa;font-size:12px;font-weight:700;cursor:pointer" onclick="substituteSession('${ds}','${g.id}')">🔄 החלפה</button>
               <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:var(--blue-light);font-size:12px;font-weight:700;cursor:pointer" onclick="A.activeGroupId='${g.id}';A.activeDate='${ds}';A.subView='assignSailors';renderPage()">👥 הוסף/הסר חניך</button>
               <button style="flex:1;padding:9px 4px;background:none;border:none;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer" onclick="A.activeGroupId='${g.id}';A.activeDate='${ds}';A.subView='groupDetail';renderPage()">📋 פרטי קבוצה</button>
             </div>
@@ -1387,6 +1460,15 @@ function rGroupForm(){
 // ── Session ───────────────────────────────────────────────────
 function rSession(){
   const sess=A.activeSession;if(!sess){goBack();return"";}
+  if(sess.cancelled){
+    return`<button class="bbtn" onclick="goBack()">← חזרה</button>
+    <div style="text-align:center;padding:60px 20px;color:var(--muted)">
+      <div style="font-size:48px;margin-bottom:12px">⚠️</div>
+      <div style="font-size:18px;font-weight:800;color:var(--yellow)">פעילות דחויה</div>
+      ${sess.cancel_reason?`<div style="margin-top:8px;font-size:14px">${esc(sess.cancel_reason)}</div>`:""}
+      <div style="margin-top:16px;font-size:12px;color:var(--muted)">לא ניתן למלא נוכחות לפעילות שדחויה</div>
+    </div>`;
+  }
   const g=getG(sess.group_id);
   const att=A.attendance[sess.id]||{};
   const ids=Object.keys(att);
