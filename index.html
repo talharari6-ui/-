@@ -157,7 +157,7 @@ let A={
   activeGroupId:null,activeSession:null,activeDate:null,
   form:ef(),editId:null,
   gf:egf(),editGId:null,
-  weekOffset:0,scheduleFilter:"all",hoursYear:null,hoursMonth:undefined,
+  weekOffset:0,monthOffset:0,scheduleFilter:"all",hoursYear:null,hoursMonth:undefined,
   hForm:{date:td(),start_time:"",end_time:"",notes:""},editHId:null,
 };
 function ef(){return{first_name:"",last_name:"",birth_date:"",join_date:td(),shirt_size:"M",parent_name:"",parent_phone:"",gender:"male",boat:"Optimist"};}
@@ -754,7 +754,13 @@ function rSchedule(isAdmin=false){
   const vm=A.scheduleView||"week";
   const off=A.weekOffset;
   const ws=wkStart(off);
-  const days=Array.from({length:7},(_,i)=>addD(ws,i));
+  // For month view, use monthOffset to determine which month to show
+  const moff=A.monthOffset||0;
+  const now2=new Date();
+  const mViewDate=new Date(now2.getFullYear(), now2.getMonth()+moff, 1);
+  const days=vm==="month"
+    ? Array.from({length:7},(_,i)=>addD(mViewDate,i))
+    : Array.from({length:7},(_,i)=>addD(ws,i));
   const todayStr=td();
 
   const map={};days.forEach(d=>{map[toISO(d)]=[];});
@@ -789,7 +795,7 @@ function rSchedule(isAdmin=false){
     viewDays=[days[Math.floor(days.length/2)]];
     titleStr=fl(toISO(viewDays[0]));
   } else if(vm==="month"){
-    const myr=days[0].getFullYear(), mmn=days[0].getMonth();
+    const myr=mViewDate.getFullYear(), mmn=mViewDate.getMonth();
     const dim=new Date(myr,mmn+1,0).getDate();
     const mName=new Intl.DateTimeFormat("he-IL",{month:"long",year:"numeric"}).format(new Date(myr,mmn,1));
     titleStr=mName;
@@ -849,11 +855,11 @@ function rSchedule(isAdmin=false){
     <h2 style="font-size:20px;font-weight:800;margin-bottom:10px">📅 לוח</h2>
     ${filterHtml}
     <div class="wnav">
-      <button class="warr" onclick="A.weekOffset--;nav('${navStr}')">&#8594;</button>
+      <button class="warr" onclick="vm==='month'?A.monthOffset--:A.weekOffset--;nav('${navStr}')">&#8594;</button>
       <div class="wtitle">${titleStr}</div>
-      <button class="warr" onclick="A.weekOffset++;nav('${navStr}')">&#8592;</button>
+      <button class="warr" onclick="vm==='month'?A.monthOffset++:A.weekOffset++;nav('${navStr}')">&#8592;</button>
     </div>
-    ${off!==0?`<button class="btn btn-g btn-sm" style="margin-bottom:12px" onclick="A.weekOffset=0;nav('${navStr}')">↩ היום</button>`:""}
+    ${(vm==="month"?moff!==0:off!==0)?`<button class="btn btn-g btn-sm" style="margin-bottom:12px" onclick="A.weekOffset=0;A.monthOffset=0;nav('${navStr}')">↩ היום</button>`:""}
     ${vm==="month"?monthCalHTML:""}
     ${viewDays.map(d=>{
       const ds=toISO(d);
