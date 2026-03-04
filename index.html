@@ -161,7 +161,7 @@ function egf(){return{name:"",color:COLORS[0],days_of_week:[],start_time:"",end_
 let A={
   coach:null,isAdmin:false,
   groups:[],sailors:[],sessions:[],attendance:{},
-  allCoaches:[],allGroups:[],allSailors:[],allSessions:[],allAttendance:{},workHours:[],adminMonth:new Date().getMonth(),adminYear:new Date().getFullYear(),adminView:"agenda",adminDayDetail:null,prevView:null,
+  allCoaches:[],allGroups:[],allSailors:[],allSessions:[],allAttendance:{},workHours:[],adminMonth:new Date().getMonth(),adminYear:new Date().getFullYear(),adminView:"agenda",adminDayDetail:null,prevView:null,absenceReasons:{},
   view:"schedule",subView:null,
   activeGroupId:null,activeSession:null,activeDate:null,
   form:ef(),editId:null,
@@ -525,6 +525,19 @@ async function openSession(date,gid){
       }
     }catch(e){toast("❌ "+e.message);return;}
   }
+  // Load absence reasons from DB
+  if(A.activeSession){
+    try{
+      const attRows=await dbG("attendance",`session_id=eq.${A.activeSession.id}`);
+      if(!A.absenceReasons)A.absenceReasons={};
+      A.absenceReasons[A.activeSession.id]={};
+      attRows.forEach(r=>{
+        if(r.absence_reason)A.absenceReasons[A.activeSession.id][r.sailor_id]=r.absence_reason;
+        // Also sync present status
+        if(A.attendance[A.activeSession.id])A.attendance[A.activeSession.id][r.sailor_id]=r.present;
+      });
+    }catch(e){}
+  }
   A.subView="session";renderPage();
 }
 
@@ -542,6 +555,20 @@ async function toggleAtt(sid){
   try{await dbPa("attendance",`session_id=eq.${sess.id}&sailor_id=eq.${sid}`,{present:next});}
   catch(e){toast("❌ שגיאת שמירה");}
 }
+async function setAbsenceReason(sid){
+  const sess=A.activeSession;if(!sess)return;
+  const cur=A.absenceReasons?.[sess.id]?.[sid]||"";
+  const reason=prompt("סיבת היעדרות:",cur);
+  if(reason===null)return;
+  if(!A.absenceReasons[sess.id])A.absenceReasons[sess.id]={};
+  A.absenceReasons[sess.id][sid]=reason;
+  try{
+    await dbPa("attendance",`session_id=eq.${sess.id}&sailor_id=eq.${sid}`,{absence_reason:reason||null});
+  }catch(e){toast("❌ שגיאת שמירה");}
+  renderPage();
+}
+
+
 function promptCancelSession(){
   const sess=A.activeSession;if(!sess)return;
   const reason=prompt("סיבת דחייה (אופציונלי):");
@@ -1518,10 +1545,16 @@ function rSession(){
     <button class="btn btn-g btn-sm" style="margin-bottom:12px;width:auto" onclick="toggleAll()">${allP?"בטל הכל ✗":"סמן הכל ✓"}</button>
     ${ids.map(sid=>{
       const s=A.sailors.find(x=>x.id===sid);const p=att[sid];
-      return`<div id="arow-${sid}" class="arow ${p?"present":"absent"}" onclick="toggleAtt('${sid}')">
-        <div class="av av-${s?.gender==="female"?"f":"m"}" style="width:38px;height:38px;font-size:18px">${s?.gender==="female"?"👧":"👦"}</div>
-        <div><div style="font-weight:700;font-size:15px">${s?esc(s.first_name)+" "+esc(s.last_name):"?"}</div><div style="font-size:11px;color:var(--muted)">${s?.boat||""}</div></div>
-        <div id="achk-${sid}" class="achk ${p?"present":"absent"}">${p?"✓":"✗"}</div>
+      const absReason=A.absenceReasons?.[sess.id]?.[sid]||"";
+      return`<div id="arow-${sid}" class="arow ${p?"present":"absent"}">
+        <div onclick="toggleAtt('${sid}')" style="display:flex;align-items:center;gap:10px;flex:1">
+          <div class="av av-${s?.gender==="female"?"f":"m"}" style="width:38px;height:38px;font-size:18px">${s?.gender==="female"?"👧":"👦"}</div>
+          <div style="flex:1"><div style="font-weight:700;font-size:15px">${s?esc(s.first_name)+" "+esc(s.last_name):"?"}</div>
+            <div style="font-size:11px;color:var(--muted)">${s?.boat||""}${!p&&absReason?` · <span style="color:#f59e0b">${esc(absReason)}</span>`:""}</div>
+          </div>
+        </div>
+        ${!p?`<button onclick="setAbsenceReason('${sid}')" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:8px;padding:3px 8px;font-size:11px;cursor:pointer">${absReason?"✏️":"+ סיבה"}</button>`:""}
+        <div id="achk-${sid}" onclick="toggleAtt('${sid}')" class="achk ${p?"present":"absent"}" style="cursor:pointer">${p?"✓":"✗"}</div>
       </div>`;
     }).join("")}
     <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--muted)">💾 נשמר אוטומטית לשרת</div>`}
@@ -1809,7 +1842,7 @@ function rAdminOverview(){
     </div>
     <div class="sgrid">
       <div class="sc"><div class="si">🧑‍🏫</div><div class="sv" style="color:var(--blue)">${A.allCoaches.length}</div><div class="sl">מדריכים</div></div>
-      <div class="sc"><div class="si">👥</div><div class="sv" style="color:var(--green)">${A.allSailors.length}</div><div class="sl">חניכים</div></div>
+      <div class="sc" onclick="toggleAbsenceReport()" style="cursor:pointer"><div class="si">🚫</div><div class="sv" style="color:var(--red,#ef4444)">${(()=>{const mn=String((A.adminMonth||new Date().getMonth())+1).padStart(2,"0");const yr=A.adminYear||new Date().getFullYear();const mnSess=A.allSessions.filter(s=>s.date.startsWith(yr+"-"+mn)&&!s.cancelled);return Object.values(A.allAttendance).reduce((tot,att,_,arr)=>{const sid=mnSess.find(s=>A.allAttendance[s.id]===att);return tot+Object.values(att).filter(v=>v===false).length;},0);})()}</div><div class="sl">חיסורים</div></div>
       <div class="sc"><div class="si">🏊</div><div class="sv" style="color:var(--yellow)">${A.allGroups.length}</div><div class="sl">קבוצות</div></div>
     </div>
     <div class="sgrid">
