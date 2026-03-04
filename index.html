@@ -967,7 +967,6 @@ function autoSaveHours(date,field,value){
   let rec=A.workHours.find(h=>h.date===date);
   if(!rec){rec={id:null,coach_id:A.coach.id,date,start_time:"",end_time:"",notes:""};A.workHours.push(rec);}
   rec[field]=value;
-  console.log("autoSave:",date,field,"=",value,"rec now:",JSON.stringify({st:rec.start_time,et:rec.end_time}));
   // update hours span inline
   if(rec.start_time&&rec.end_time){
     const h=calcHours(rec.start_time,rec.end_time);
