@@ -1559,12 +1559,13 @@ function rAdminCoaches(){
       const approved=c.approved!==false;
       return`<div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+          <div style="display:flex;align-items:center;gap:10px">
             ${coachAvatar(c,38)}
             <div>
-            <div style="font-weight:800;font-size:15px">${esc(c.name)}</div>
-            <div style="font-size:11px;color:var(--muted)">ת"ז: ${c.id} · ${cGroups.length} קבוצות · ${cSailors} חניכים</div>
+              <div style="font-weight:800;font-size:15px">${esc(c.name)}</div>
+              <div style="font-size:11px;color:var(--muted)">ת"ז: ${c.id} · ${cGroups.length} קבוצות · ${cSailors} חניכים</div>
             </div>
+          </div>
           <div style="display:flex;gap:6px;align-items:center">
             <button onclick="toggleApprove(\'${c.id}\')"
               style="background:${approved?"rgba(52,211,153,0.2)":"rgba(239,68,68,0.15)"};border:1px solid ${approved?"rgba(52,211,153,0.4)":"rgba(239,68,68,0.3)"};color:${approved?"var(--green)":"var(--red)"};border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer">
