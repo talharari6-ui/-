@@ -776,10 +776,20 @@ function showDayMenu(date,evt){
 async function toggleAll(){
   const sess=A.activeSession;if(!sess)return;
   const att=A.attendance[sess.id]||{};const ids=Object.keys(att);
-  const next=!ids.every(id=>att[id]);
-  ids.forEach(id=>{A.attendance[sess.id][id]=next;});renderPage();
-  try{for(const sid of ids)await dbPa("attendance",`session_id=eq.${sess.id}&sailor_id=eq.${sid}`,{present:next});}
-  catch(e){toast("❌ שגיאה");}
+  const vals=ids.map(id=>att[id]);
+  // cycle: not-all-true → all true | all-true → all false | all-false → all null
+  let next;
+  if(vals.every(v=>v===true)) next=false;
+  else if(vals.every(v=>v===false)) next=null;
+  else next=true;
+  ids.forEach(id=>{A.attendance[sess.id][id]=next;});
+  renderPage();
+  try{
+    for(const sid of ids){
+      if(next===null) await dbD("attendance",`session_id=eq.${sess.id}&sailor_id=eq.${sid}`);
+      else await sbUpsert("attendance",{session_id:sess.id,sailor_id:sid,present:next});
+    }
+  }catch(e){toast("❌ שגיאה");}
 }
 
 // ── Work hours ────────────────────────────────────────────────
@@ -1579,7 +1589,7 @@ function rSession(){
       <button class="btn btn-sm" style="font-size:11px;padding:4px 10px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b" onclick="promptCancelSession()">⚠️ דחייה</button>
     </div>
     ${ids.length===0?`<div style="text-align:center;padding:40px;color:var(--muted)">אין חניכים בקבוצה</div>`:`
-    <button class="btn btn-g btn-sm" style="margin-bottom:12px;width:auto" onclick="toggleAll()">${allP?"בטל הכל ✗":"סמן הכל ✓"}</button>
+    <button class="btn btn-g btn-sm" style="margin-bottom:12px;width:auto" onclick="toggleAll()">${(()=>{const vals=ids.map(id=>att[id]);if(vals.every(v=>v===true))return"סמן הכל ✗";if(vals.every(v=>v===false))return"נקה הכל —";return"סמן הכל ✓";})()}</button>
     ${ids.map(sid=>{
       const s=A.sailors.find(x=>x.id===sid);const p=att[sid];
       const absReason=A.absenceReasons?.[sess.id]?.[sid]||"";
