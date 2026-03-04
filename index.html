@@ -1478,82 +1478,92 @@ function rAdminMonthly(){
   const mName=new Intl.DateTimeFormat("he-IL",{month:"long",year:"numeric"}).format(new Date(yr,mn,1));
   const dim=new Date(yr,mn+1,0).getDate();
   const mnStr=String(mn+1).padStart(2,"0");
+  const todayStr=td();
 
-  // Build sessions for this month grouped by day
-  const monthSessions=A.allSessions.filter(s=>s.date.startsWith(yr+"-"+mnStr)&&!s.cancelled)
-    .sort((a,b)=>a.date.localeCompare(b.date));
-
-  // Group by date
-  const byDate={};
-  monthSessions.forEach(s=>{
-    if(!byDate[s.date])byDate[s.date]=[];
-    byDate[s.date].push(s);
+  // Build sessions map by date from DB
+  const sessMap={};
+  A.allSessions.forEach(s=>{
+    if(!sessMap[s.date])sessMap[s.date]=[];
+    sessMap[s.date].push(s);
   });
 
-  const dates=Object.keys(byDate).sort();
+  // For each day of month, show groups scheduled that day (from days_of_week)
+  // plus any actual sessions from DB
+  const firstDow=new Date(yr,mn,1).getDay();
+  const totalCells=Math.ceil((firstDow+dim)/7)*7;
 
-  const rows=dates.map(date=>{
-    const sessions=byDate[date];
-    const d=new Date(date+"T00:00:00");
-    const dayLabel="יום "+DL[d.getDay()]+" "+String(d.getDate()).padStart(2,"0")+"/"+mnStr;
-    const isToday=date===td();
+  // Stats
+  const monthSess=A.allSessions.filter(s=>!s.cancelled);
+  const monthCanc=A.allSessions.filter(s=>s.cancelled);
 
-    const sessionRows=sessions.map(s=>{
-      const g=A.allGroups.find(x=>x.id===s.group_id);
-      const coach=A.allCoaches.find(x=>x.id===g?.coach_id);
-      const att=A.allAttendance[s.id]||{};
-      const sailors=g?.sailorIds||[];
+  // Build calendar grid
+  let cells="";
+  for(let i=0;i<totalCells;i++){
+    const day=i-firstDow+1;
+    const isValid=day>=1&&day<=dim;
+    const dateStr=isValid?yr+"-"+mnStr+"-"+String(day).padStart(2,"0"):"";
+    const isToday=dateStr===todayStr;
+    const isPast=dateStr&&dateStr<todayStr;
+
+    if(!isValid){cells+=`<div style="min-height:80px"></div>`;continue;}
+
+    // Groups scheduled this day of week
+    const dow=new Date(dateStr+"T00:00:00").getDay();
+    const scheduledGroups=A.allGroups.filter(g=>(g.days_of_week||[]).includes(dow));
+    const dbSess=sessMap[dateStr]||[];
+
+    const groupItems=scheduledGroups.map(g=>{
+      const sess=dbSess.find(s=>s.group_id===g.id);
+      const coach=A.allCoaches.find(x=>x.id===g.coach_id);
+      const isCancelled=sess?.cancelled;
+      const sailors=g.sailorIds||[];
+      const att=sess?A.allAttendance[sess.id]||{}:{};
       const present=sailors.filter(id=>att[id]).length;
-      const isSubstitute=s.substitute_coach_id;
-      const subCoach=isSubstitute?A.allCoaches.find(x=>x.id===s.substitute_coach_id):null;
+      const hasAtt=Object.keys(att).length>0;
 
-      return`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-bottom:1px solid rgba(255,255,255,0.05);font-size:13px">
-        <div style="display:flex;align-items:center;gap:8px;flex:1">
-          <div style="width:8px;height:8px;border-radius:50%;background:${g?.color||"#888"};flex-shrink:0"></div>
-          <div>
-            <div style="font-weight:700">${esc(g?.name||"")}</div>
-            <div style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px">
-              ${coachAvatar(subCoach||coach,16)}
-              <span style="${isSubstitute?"color:var(--yellow)":""}">${isSubstitute?"🔄 "+esc(subCoach?.name||""):esc(coach?.name||"")}</span>
-              ${s.start_time?`· ${s.start_time}`:""}
-            </div>
-          </div>
+      return`<div style="font-size:9px;padding:2px 4px;border-radius:4px;margin-bottom:2px;
+        background:${isCancelled?"rgba(239,68,68,0.15)":g.color+"22"};
+        border-right:2px solid ${isCancelled?"#ef4444":g.color};
+        opacity:${isPast&&!sess?"0.4":"1"}">
+        <div style="font-weight:700;color:${isCancelled?"#ef4444":g.color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+          ${isCancelled?"❌ ":""}${esc(g.name)}
         </div>
-        <div style="text-align:left;flex-shrink:0">
-          <div style="font-weight:700;color:var(--blue-light)">${sailors.length} חניכים</div>
-          ${Object.keys(att).length?`<div style="font-size:11px;color:${present===sailors.length?"var(--green)":"var(--muted)"}">${present}/${sailors.length} נוכחים</div>`:""}
+        <div style="color:rgba(255,255,255,0.5);font-size:8px">
+          ${coachAvatar(coach,10)} ${esc(coach?.name||"")}
         </div>
+        ${hasAtt?`<div style="color:${present===sailors.length?"#34d399":"#f59e0b"};font-size:8px">${present}/${sailors.length}</div>`:`<div style="color:rgba(255,255,255,0.3);font-size:8px">${sailors.length} חנ'</div>`}
       </div>`;
     }).join("");
 
-    return`<div style="margin-bottom:10px;background:var(--card);border:1px solid ${isToday?"var(--blue)":"var(--border)"};border-radius:12px;overflow:hidden">
-      <div style="padding:8px 12px;background:${isToday?"rgba(59,130,246,0.15)":"rgba(255,255,255,0.03)"};font-weight:800;font-size:13px;color:${isToday?"var(--blue-light)":"var(--text)"}">
-        ${dayLabel}${isToday?` <span style="font-size:11px;color:var(--blue-light)">• היום</span>`:""}
-        <span style="float:left;font-size:11px;color:var(--muted);font-weight:400">${sessions.length} פעילויות</span>
-      </div>
-      ${sessionRows}
+    cells+=`<div style="min-height:80px;padding:4px;border-radius:8px;border:1px solid ${isToday?"var(--blue)":"var(--border)"};background:${isToday?"rgba(59,130,246,0.1)":isPast?"rgba(0,0,0,0.1)":"var(--card)"}">
+      <div style="font-weight:${isToday?"800":"600"};font-size:11px;color:${isToday?"var(--blue-light)":"var(--text)"};margin-bottom:3px">${day}</div>
+      ${groupItems}
     </div>`;
-  }).join("");
+  }
+
+  const dayHdrs=["א","ב","ג","ד","ה","ו","ש"].map(h=>`<div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);padding:4px 0">${h}</div>`).join("");
 
   return`
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
-      <h2 style="font-size:22px;font-weight:800">👑 מסוף מנהל</h2>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <h2 style="font-size:20px;font-weight:800">👑 מסוף מנהל</h2>
       <span class="admin-badge">ADMIN</span>
     </div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 12px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 12px">
       <button class="warr" onclick="A.adminMonth--;if(A.adminMonth<0){A.adminMonth=11;A.adminYear--;}loadAdminData().then(renderPage)">&#8594;</button>
       <div style="flex:1;text-align:center;font-weight:800;font-size:16px">${mName}</div>
       <button class="warr" onclick="A.adminMonth++;if(A.adminMonth>11){A.adminMonth=0;A.adminYear++;}loadAdminData().then(renderPage)">&#8592;</button>
       ${(yr!==now.getFullYear()||mn!==now.getMonth())?`<button class="btn btn-g btn-sm" onclick="A.adminMonth=${now.getMonth()};A.adminYear=${now.getFullYear()};loadAdminData().then(renderPage)">היום</button>`:""}
     </div>
-    <div class="sgrid" style="margin-bottom:16px">
-      <div class="sc"><div class="si">📅</div><div class="sv" style="color:var(--purple)">${monthSessions.length}</div><div class="sl">פעילויות</div></div>
-      <div class="sc"><div class="si">⚠️</div><div class="sv" style="color:var(--yellow)">${A.allSessions.filter(s=>s.date.startsWith(yr+"-"+mnStr)&&s.cancelled).length}</div><div class="sl">דחיות</div></div>
+    <div class="sgrid" style="margin-bottom:12px">
+      <div class="sc"><div class="si">📅</div><div class="sv" style="color:var(--purple)">${monthSess.length}</div><div class="sl">פעילויות</div></div>
+      <div class="sc"><div class="si">⚠️</div><div class="sv" style="color:var(--yellow)">${monthCanc.length}</div><div class="sl">דחיות</div></div>
       <div class="sc"><div class="si">👥</div><div class="sv" style="color:var(--green)">${new Set(A.allGroups.flatMap(g=>g.sailorIds||[])).size}</div><div class="sl">חניכים</div></div>
     </div>
-    ${dates.length===0?`<div style="text-align:center;padding:40px 0;color:var(--muted)"><div style="font-size:40px">📅</div><p>אין פעילויות מתוכננות לחודש זה</p></div>`:rows}
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px">${dayHdrs}</div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">${cells}</div>
   `;
 }
+
 
 function rAdminOverview(){
   const totalHours=A.workHours.reduce((s,h)=>s+calcHours(h.start_time,h.end_time),0);
