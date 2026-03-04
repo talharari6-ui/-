@@ -925,20 +925,20 @@ function rHours(){
     const rec=A.workHours.find(h=>h.date===dateStr);
     const hid="hr-"+dateStr;
     
-    rows+=`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);${isFuture?"opacity:0.4":""}">
+    rows+=`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
       <div style="min-width:52px;text-align:right">
         <div style="font-size:15px;font-weight:${isToday?"800":"600"};color:${isToday?"var(--blue-light)":"var(--text)"}">${String(day).padStart(2,"0")}</div>
         <div style="font-size:10px;color:var(--muted)">${DL[dow]}</div>
         ${isToday?`<div style="font-size:9px;color:var(--blue-light);font-weight:700">היום</div>`:""}
       </div>
       <div style="flex:1;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <input type="time" style="background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;font-size:14px;width:90px;color-scheme:dark;${isFuture?"pointer-events:none":""}" 
+        <input type="time" style="background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;font-size:14px;width:90px;color-scheme:dark;" 
           value="${rec?rec.start_time:""}" 
           placeholder="כניסה"
           onchange="autoSaveHours('${dateStr}','start_time',this.value)"
           id="st-${dateStr}">
         <span style="color:var(--muted);font-size:12px">–</span>
-        <input type="time" style="background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;font-size:14px;width:90px;color-scheme:dark;${isFuture?"pointer-events:none":""}" 
+        <input type="time" style="background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;font-size:14px;width:90px;color-scheme:dark;" 
           value="${rec?rec.end_time:""}" 
           placeholder="יציאה"
           onchange="autoSaveHours('${dateStr}','end_time',this.value)"
