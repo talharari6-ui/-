@@ -231,7 +231,6 @@ async function loadAll(){
 async function loadHours(){
   const cid=A.coach.id;
   A.workHours=await dbG("work_hours","coach_id=eq."+cid,"date.desc");
-  console.log("workHours loaded:",A.workHours.length,"records",A.workHours.slice(0,2));
 }
 async function loadScheduleData(){
   A.allCoaches=await dbG("coaches","","name.asc");
@@ -901,13 +900,13 @@ function rHours(){
         <input type="time" style="background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;font-size:14px;width:90px;color-scheme:dark;${isFuture?"pointer-events:none":""}" 
           value="${rec?rec.start_time:""}" 
           placeholder="כניסה"
-          oninput="autoSaveHours('${dateStr}','start',this.value)"
+          oninput="autoSaveHours('${dateStr}','start_time',this.value)"
           id="st-${dateStr}">
         <span style="color:var(--muted);font-size:12px">–</span>
         <input type="time" style="background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;font-size:14px;width:90px;color-scheme:dark;${isFuture?"pointer-events:none":""}" 
           value="${rec?rec.end_time:""}" 
           placeholder="יציאה"
-          oninput="autoSaveHours('${dateStr}','end',this.value)"
+          oninput="autoSaveHours('${dateStr}','end_time',this.value)"
           id="et-${dateStr}">
         ${rec&&rec.start_time&&rec.end_time?`<span style="font-size:12px;font-weight:700;color:var(--green);min-width:32px">${fmtH(calcHours(rec.start_time,rec.end_time))}</span>`:`<span style="min-width:32px"></span>`}
         <input style="background:rgba(0,0,0,0.2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;font-size:12px;flex:1;min-width:60px;color-scheme:dark" 
@@ -986,9 +985,8 @@ function autoSaveHours(date,field,value){
 
 async function persistHours(date){
   const rec=A.workHours.find(h=>h.date===date);
-  console.log("persistHours called:",date,"rec:",rec);
   if(!rec)return;
-  if(!rec.start_time&&!rec.end_time&&!rec.notes){console.log("persistHours: nothing to save");return;}
+  if(!rec.start_time&&!rec.end_time&&!rec.notes)return;
   try{
     if(rec.id){
       await dbPa("work_hours",`id=eq.${rec.id}`,{start_time:rec.start_time||null,end_time:rec.end_time||null,notes:rec.notes||null});
@@ -1000,7 +998,7 @@ async function persistHours(date){
     if(st2){var el2=st2.parentElement;if(el2){el2.style.background="rgba(52,211,153,0.08)";setTimeout(function(){if(el2)el2.style.background="";},1500);}}
     var savedEl=document.getElementById("sv-"+date);
     if(savedEl){savedEl.textContent="✓ נשמר";savedEl.style.opacity="1";setTimeout(function(){if(savedEl)savedEl.style.opacity="0";},2000);}
-  }catch(e){console.error("persistHours FULL ERROR:",e,JSON.stringify(e));toast("❌ "+e.message);}
+  }catch(e){toast("❌ שגיאת שמירה: "+e.message);}
 }
 
 function showCopyModal(date){
