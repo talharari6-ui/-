@@ -920,7 +920,8 @@ function rHours(){
           placeholder="הערה..."
           onchange="autoSaveHours('${dateStr}','notes',this.value)" oninput="autoSaveHours('${dateStr}','notes',this.value)"
           id="nt-${dateStr}">
-        <span id="cpybtn-${dateStr}">${rec&&rec.start_time&&rec.end_time?`<button onclick="showCopyModal('${dateStr}')" style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:var(--blue-light);border-radius:8px;padding:6px 8px;font-size:12px;cursor:pointer;white-space:nowrap">📋</button>`:""}</span>
+        <span id="cpybtn-${dateStr}" style="display:flex;gap:4px">${rec&&rec.start_time&&rec.end_time?`<button onclick="showCopyModal('${dateStr}')" style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:var(--blue-light);border-radius:8px;padding:6px 8px;font-size:12px;cursor:pointer">📋</button>`:""}</span>
+        ${rec&&(rec.start_time||rec.end_time||rec.notes)?`<button onclick="clearHours('${dateStr}')" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:8px;padding:6px 8px;font-size:12px;cursor:pointer">🗑️</button>`:""}
         <span id="sv-${dateStr}" style="font-size:10px;color:var(--green);font-weight:700;opacity:0;transition:opacity 0.3s;min-width:40px">✓ נשמר</span>
       </div>
     </div>`;
@@ -998,6 +999,24 @@ function autoSaveHours(date,field,value){
   }
 }
 
+async function clearHours(date){
+  if(!confirm("לנקות את השעות ליום זה?"))return;
+  const rec=A.workHours.find(h=>h.date===date);
+  if(!rec)return;
+  try{
+    if(rec.id)await dbPa("work_hours","id=eq."+rec.id,{start_time:null,end_time:null,notes:null});
+    rec.start_time="";rec.end_time="";rec.notes="";
+    const st=document.getElementById("st-"+date);
+    const et=document.getElementById("et-"+date);
+    const nt=document.getElementById("nt-"+date);
+    if(st)st.value="";if(et)et.value="";if(nt)nt.value="";
+    const sp=document.getElementById("sv-"+date);if(sp)sp.textContent="";
+    const cpyEl=document.getElementById("cpybtn-"+date);if(cpyEl)cpyEl.innerHTML="";
+    // update totals
+    autoSaveHours(date,"start_time","");
+    toast("🗑️ שעות נוקו");
+  }catch(e){toast("❌ "+e.message);}
+}
 async function persistHours(date){
   const rec=A.workHours.find(h=>h.date===date);
   if(!rec)return;
