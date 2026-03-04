@@ -546,9 +546,22 @@ async function toggleAtt(sid){
   const next=!(A.attendance[sess.id]?.[sid]||false);
   if(!A.attendance[sess.id])A.attendance[sess.id]={};
   A.attendance[sess.id][sid]=next;
-  document.getElementById("arow-"+sid)?.setAttribute("class","arow "+(next?"present":"absent"));
+  const arow=document.getElementById("arow-"+sid);
+  if(arow)arow.setAttribute("class","arow "+(next?"present":"absent"));
   const chk=document.getElementById("achk-"+sid);
   if(chk){chk.className="achk "+(next?"present":"absent");chk.textContent=next?"✓":"✗";}
+  // Show/hide absence reason row
+  const reasonRow=document.getElementById("abs-row-"+sid);
+  if(reasonRow){reasonRow.style.display=next?"none":"block";}
+  else if(!next&&arow){
+    // Create the reason row if it doesn't exist yet
+    const div=document.createElement("div");
+    div.id="abs-row-"+sid;
+    div.style.cssText="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.07)";
+    const cur=(A.absenceReasons?.[sess.id]?.[sid])||"";
+    div.innerHTML=`<input type="text" value="${cur}" placeholder="סיבת היעדרות (אופציונלי)..." onchange="saveAbsenceReason('${sid}',this.value)" onclick="event.stopPropagation()" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:5px 10px;font-size:12px;color:var(--text);direction:rtl;box-sizing:border-box"/>`;
+    arow.appendChild(div);
+  }
   const cnt=Object.values(A.attendance[sess.id]).filter(Boolean).length;
   const tot=Object.keys(A.attendance[sess.id]).length;
   const ctr=document.getElementById("actr");if(ctr)ctr.textContent=cnt+"/"+tot;
@@ -1552,13 +1565,13 @@ function rSession(){
           </div>
           <div id="achk-${sid}" onclick="toggleAtt('${sid}')" class="achk ${p?"present":"absent"}" style="cursor:pointer">${p?"✓":"✗"}</div>
         </div>
-        ${!p?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.07)">
-          <input id="abs-reason-${sid}" type="text" value="${esc(absReason)}"
+        <div id="abs-row-${sid}" style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.07);display:${p?"none":"block"}">
+          <input type="text" value="${esc(absReason)}"
             placeholder="סיבת היעדרות (אופציונלי)..."
             onchange="saveAbsenceReason('${sid}',this.value)"
             onclick="event.stopPropagation()"
             style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:5px 10px;font-size:12px;color:var(--text);direction:rtl;box-sizing:border-box"/>
-        </div>`:""}
+        </div>
       </div>`;
     }).join("")}
     <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--muted)">💾 נשמר אוטומטית לשרת</div>`}
