@@ -184,6 +184,12 @@ async function sb(path,method="GET",body=null){
 }
 const dbG=(t,q="",o="created_at.asc")=>sb(t+"?"+q+(o?"&order="+o:""));
 const dbP=(t,b)=>sb(t,"POST",b);
+const sbUpsert=async(t,b)=>{
+  const h={"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates,return=representation"};
+  const res=await fetch(SUPA_URL+"/"+t,{method:"POST",headers:h,body:JSON.stringify(b)});
+  if(!res.ok){const e=await res.text();throw new Error(e);}
+  return res.json();
+};
 const dbPa=(t,q,b)=>sb(t+"?"+q,"PATCH",b);
 const dbD=(t,q)=>sb(t+"?"+q,"DELETE");
 
@@ -582,12 +588,10 @@ async function toggleAtt(sid){
   try{
     if(next===null){
       // remove row from DB
-      await fetch(`${SUPA_URL}/attendance?session_id=eq.${sess.id}&sailor_id=eq.${sid}`,{method:"DELETE",headers:{...H,"Content-Type":"application/json"}});
+      await dbD("attendance",`session_id=eq.${sess.id}&sailor_id=eq.${sid}`);
     } else {
-      // upsert
-      const existing=await dbG("attendance",`session_id=eq.${sess.id}&sailor_id=eq.${sid}`);
-      if(existing.length) await dbPa("attendance",`session_id=eq.${sess.id}&sailor_id=eq.${sid}`,{present:next});
-      else await dbP("attendance",{session_id:sess.id,sailor_id:sid,present:next});
+      // upsert using POST with on-conflict
+      await sbUpsert("attendance",{session_id:sess.id,sailor_id:sid,present:next});
     }
   }catch(e){toast("❌ שגיאת שמירה");}
 }
