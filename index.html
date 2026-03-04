@@ -855,11 +855,11 @@ function rSchedule(isAdmin=false){
     <h2 style="font-size:20px;font-weight:800;margin-bottom:10px">📅 לוח</h2>
     ${filterHtml}
     <div class="wnav">
-      <button class="warr" onclick="vm==='month'?A.monthOffset--:A.weekOffset--;nav('${navStr}')">&#8594;</button>
+      <button class="warr" onclick="A.scheduleView==='month'?A.monthOffset--:A.weekOffset--;nav('${navStr}')">&#8594;</button>
       <div class="wtitle">${titleStr}</div>
-      <button class="warr" onclick="vm==='month'?A.monthOffset++:A.weekOffset++;nav('${navStr}')">&#8592;</button>
+      <button class="warr" onclick="A.scheduleView==='month'?A.monthOffset++:A.weekOffset++;nav('${navStr}')">&#8592;</button>
     </div>
-    ${(vm==="month"?moff!==0:off!==0)?`<button class="btn btn-g btn-sm" style="margin-bottom:12px" onclick="A.weekOffset=0;A.monthOffset=0;nav('${navStr}')">↩ היום</button>`:""}
+    ${(A.scheduleView==="month"?moff!==0:off!==0)?`<button class="btn btn-g btn-sm" style="margin-bottom:12px" onclick="A.weekOffset=0;A.monthOffset=0;nav('${navStr}')">↩ היום</button>`:""}
     ${vm==="month"?monthCalHTML:""}
     ${viewDays.map(d=>{
       const ds=toISO(d);
