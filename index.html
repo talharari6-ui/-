@@ -228,6 +228,10 @@ async function loadAll(){
   A.sessions.forEach(s=>{if(s.cancelled)A.cancellations[s.id]=true;});
 }
 
+async function loadHours(){
+  const cid=A.coach.id;
+  A.workHours=await dbG("work_hours","coach_id=eq."+cid,"date.desc");
+}
 async function loadScheduleData(){
   A.allCoaches=await dbG("coaches","","name.asc");
   A.allGroups=(await dbG("groups","","name.asc")).map(g=>({...g,days_of_week:g.days_of_week||[]}));
@@ -328,6 +332,7 @@ function nav(view){
   const nb=document.getElementById("nav-"+view);if(nb)nb.classList.add("active");
   if(view==="schedule"||view==="admin-schedule")loadScheduleData().then(renderPage);
   else if(view==="admin-overview"||view==="admin-coaches"||view==="admin-sailors"||view==="admin-hours"||view==="admin-settings")loadAdminData().then(renderPage);
+  else if(view==="hours"){loadHours().then(renderPage);}
   else renderPage();
 }
 
@@ -1278,12 +1283,16 @@ function rSession(){
   const allP=ids.length>0&&ids.every(id=>att[id]);
   return`
     <button class="bbtn" onclick="A.subView='groupDetail';A.activeGroupId='${sess.group_id}';renderPage()">← חזרה לקבוצה</button>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div>
         <h2 style="font-size:17px;font-weight:800">✅ נוכחות — ${esc(g?.name||"")}</h2>
         <div style="font-size:12px;color:var(--muted);margin-top:2px">${fl(sess.date)}</div>
       </div>
       <span class="cpill" id="actr">${cnt}/${ids.length}</span>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <button class="btn btn-g btn-sm" onclick="A.subView='assignSailors';renderPage()" style="font-size:11px;padding:4px 10px">👥 חניכים</button>
+      <button class="btn btn-sm" style="font-size:11px;padding:4px 10px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b" onclick="promptCancelSession()">⚠️ דחייה</button>
     </div>
     ${ids.length===0?`<div style="text-align:center;padding:40px;color:var(--muted)">אין חניכים בקבוצה</div>`:`
     <button class="btn btn-g btn-sm" style="margin-bottom:12px;width:auto" onclick="toggleAll()">${allP?"בטל הכל ✗":"סמן הכל ✓"}</button>
@@ -1295,10 +1304,6 @@ function rSession(){
         <div id="achk-${sid}" class="achk ${p?"present":"absent"}">${p?"✓":"✗"}</div>
       </div>`;
     }).join("")}
-    <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-g btn-sm" onclick="A.subView='assignSailors';renderPage()" style="flex:1">👥 הוסף/הסר חניכים</button>
-      <button class="btn btn-sm" style="flex:1;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b" onclick="promptCancelSession()">⚠️ סמן דחייה</button>
-    </div>
     <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--muted)">💾 נשמר אוטומטית לשרת</div>`}
   `;
 }
