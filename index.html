@@ -914,7 +914,7 @@ function rHours(){
           placeholder="הערה..."
           onchange="autoSaveHours('${dateStr}','notes',this.value)" oninput="autoSaveHours('${dateStr}','notes',this.value)"
           id="nt-${dateStr}">
-        ${rec&&rec.start_time&&rec.end_time?`<button onclick="showCopyModal('${dateStr}')" style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:var(--blue-light);border-radius:8px;padding:6px 8px;font-size:12px;cursor:pointer;white-space:nowrap">📋</button>`:""}
+        <span id="cpybtn-${dateStr}">${rec&&rec.start_time&&rec.end_time?`<button onclick="showCopyModal('${dateStr}')" style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:var(--blue-light);border-radius:8px;padding:6px 8px;font-size:12px;cursor:pointer;white-space:nowrap">📋</button>`:""}</span>
         <span id="sv-${dateStr}" style="font-size:10px;color:var(--green);font-weight:700;opacity:0;transition:opacity 0.3s;min-width:40px">✓ נשמר</span>
       </div>
     </div>`;
@@ -981,6 +981,15 @@ function autoSaveHours(date,field,value){
   const gEl=document.getElementById("grand-total");if(gEl)gEl.textContent=fmtH(gTotal);
   clearTimeout(_hTimers[date]);
   _hTimers[date]=setTimeout(()=>persistHours(date),800);
+  // Show/hide copy button immediately
+  const cpyEl=document.getElementById("cpybtn-"+date);
+  if(cpyEl){
+    if(rec.start_time&&rec.end_time){
+      cpyEl.innerHTML=`<button onclick="showCopyModal('${date}')" style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:var(--blue-light);border-radius:8px;padding:6px 8px;font-size:12px;cursor:pointer;white-space:nowrap">📋</button>`;
+    }else{
+      cpyEl.innerHTML="";
+    }
+  }
 }
 
 async function persistHours(date){
