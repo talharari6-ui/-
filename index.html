@@ -283,7 +283,6 @@ async function tryLogin(){
     if(!ex.length){toast("🚫 לא מורשה — פנה למנהל");btn.disabled=false;btn.textContent="כניסה →";return;}
     const coach=ex[0];
     if(coach.approved===false){toast("🚫 לא מורשה — פנה למנהל");btn.disabled=false;btn.textContent="כניסה →";return;}
-    console.log("LOGIN DEBUG:", JSON.stringify({id:coach.id, name:coach.name, is_admin:coach.is_admin, approved:coach.approved}));
     A.coach=coach;
     A.isAdmin=!!coach.is_admin;
     ADMIN_IDS=A.isAdmin?[id]:[];
@@ -494,6 +493,16 @@ async function toggleAtt(sid){
   const ctr=document.getElementById("actr");if(ctr)ctr.textContent=cnt+"/"+tot;
   try{await dbPa("attendance",`session_id=eq.${sess.id}&sailor_id=eq.${sid}`,{present:next});}
   catch(e){toast("❌ שגיאת שמירה");}
+}
+function promptCancelSession(){
+  const sess=A.activeSession;if(!sess)return;
+  if(sess.cancelled){
+    quickCancel(sess.date,sess.group_id);
+    return;
+  }
+  const reason=prompt("סיבת דחייה (אופציונלי):");
+  if(reason===null)return;
+  quickCancel(sess.date,sess.group_id);
 }
 async function cancelSession(reason){
   const sess=A.activeSession;if(!sess)return;
@@ -972,7 +981,7 @@ function autoSaveHours(date,field,value){
 async function persistHours(date){
   const rec=A.workHours.find(h=>h.date===date);
   if(!rec)return;
-  if(!rec.start_time&&!rec.end_time)return;
+  if(!rec.start_time&&!rec.end_time&&!rec.notes)return;
   try{
     if(rec.id){
       await dbPa("work_hours",`id=eq.${rec.id}`,{start_time:rec.start_time,end_time:rec.end_time,notes:rec.notes||null});
@@ -1138,7 +1147,7 @@ function rGroupDetail(){
 function rAssign(){
   const g=getG(A.activeGroupId);if(!g){goBack();return"";}
   return`
-    <button class="bbtn" onclick="A.subView='groupDetail';renderPage()">← חזרה</button>
+    <button class="bbtn" onclick="A.subView=A.activeSession?'session':'groupDetail';renderPage()">← חזרה</button>
     <h2 style="font-size:18px;font-weight:800;margin-bottom:4px">שיוך חניכים ל-${esc(g.name)}</h2>
     <p style="color:var(--muted);font-size:12px;margin-bottom:16px">לחץ להוספה/הסרה</p>
     <button class="btn btn-p btn-sm" style="margin-bottom:14px" onclick="A.form=ef();A.editId=null;A.subView='addSailor';renderPage()">+ חניך חדש</button>
@@ -1286,6 +1295,10 @@ function rSession(){
         <div id="achk-${sid}" class="achk ${p?"present":"absent"}">${p?"✓":"✗"}</div>
       </div>`;
     }).join("")}
+    <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-g btn-sm" onclick="A.subView='assignSailors';renderPage()" style="flex:1">👥 הוסף/הסר חניכים</button>
+      <button class="btn btn-sm" style="flex:1;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b" onclick="promptCancelSession()">⚠️ סמן דחייה</button>
+    </div>
     <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--muted)">💾 נשמר אוטומטית לשרת</div>`}
   `;
 }
