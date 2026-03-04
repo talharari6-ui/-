@@ -726,7 +726,7 @@ function renderLogin(){
     <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:20px;padding:24px">
       <div class="fg">
         <label class="fl">תעודת זהות</label>
-        <input class="fi" id="lid" type="number" placeholder="קוד כניסה" inputmode="numeric" style="font-size:22px;letter-spacing:2px;text-align:center" oninput="chkNew()">
+        <input class="fi" id="lid" type="number" placeholder="תעודת זהות" inputmode="numeric" style="font-size:22px;letter-spacing:2px;text-align:center" oninput="chkNew()">
       </div>
       <div class="fg" id="ng" style="display:none">
         <label class="fl">שמך (הרשמה ראשונה)</label>
@@ -1500,7 +1500,6 @@ function rAdminOverview(){
 async function saveAdminCoach(){
   const f=A.adminCoachForm;
   if(!f.id.trim()||!f.first_name.trim()||!f.last_name.trim()){toast("⚠️ נא למלא ת.ז., שם ושם משפחה");return;}
-  if(ADMIN_IDS.includes(f.id.trim())){toast("⚠️ ת.ז. זו שמורה למנהל");return;}
   const fullName=f.first_name.trim()+" "+f.last_name.trim();
   try{
     if(A.editCoachId){
@@ -1547,7 +1546,7 @@ function rAdminCoachForm(){
   return`
     <button class="bbtn" onclick="A.subView=null;A.editCoachId=null;renderPage()">← חזרה</button>
     <h2 style="font-size:20px;font-weight:800;margin-bottom:20px">${isEdit?"✏️ עריכת מדריך":"+ הוסף מדריך"}</h2>
-    <div class="fg"><label class="fl">תעודת זהות (קוד כניסה)</label>
+    <div class="fg"><label class="fl">תעודת זהות</label>
       <input class="fi" value="${esc(f.login_code||f.id)}" oninput="A.adminCoachForm.login_code=this.value" placeholder="מספר ת.ז." inputmode="numeric"></div>
     <div class="frow">
       <div class="fg"><label class="fl">שם פרטי</label><input class="fi" value="${esc(f.first_name)}" oninput="A.adminCoachForm.first_name=this.value"></div>
