@@ -725,7 +725,7 @@ function renderLogin(){
     <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:20px;padding:24px">
       <div class="fg">
         <label class="fl">תעודת זהות</label>
-        <input class="fi" id="lid" type="number" placeholder="תעודת זהות" inputmode="numeric" style="font-size:22px;letter-spacing:2px;text-align:center" oninput="chkNew()">
+        <input class="fi" id="lid" type="number" placeholder="תעודת זהות" inputmode="numeric" style="font-size:22px;letter-spacing:2px;text-align:center" oninput="chkNew()" onkeydown="if(event.key==='Enter')tryLogin()">
       </div>
       <div class="fg" id="ng" style="display:none">
         <label class="fl">שמך (הרשמה ראשונה)</label>
