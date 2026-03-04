@@ -576,6 +576,28 @@ function promptCancel(){
   cancelSession(reason);
 }
 
+async function quickCancelFromDetail(groupId, date){
+  const reason=prompt("סיבת דחייה (אופציונלי):");
+  if(reason===null)return;
+  try{
+    let sess=A.sessions.find(s=>s.group_id===groupId&&s.date===date);
+    const cancelled=!(sess&&sess.cancelled);
+    if(!sess){
+      const res=await dbP("sessions",{group_id:groupId,date,cancelled:true,cancel_reason:reason||null,coach_note:""});
+      sess=res[0];A.sessions.push(sess);
+    } else {
+      await dbPa("sessions",`id=eq.${sess.id}`,{cancelled,cancel_reason:cancelled?(reason||null):null});
+      sess.cancelled=cancelled;sess.cancel_reason=cancelled?(reason||null):null;
+    }
+    if(cancelled){
+      const hr=A.workHours.find(h=>h.date===date&&h.coach_id===A.coach?.id);
+      if(hr){await dbPa("work_hours",`id=eq.${hr.id}`,{start_time:null,end_time:null});hr.start_time=null;hr.end_time=null;}
+    }
+    renderPage();toast(cancelled?"⚠️ פעילות דחויה":"✅ דחייה בוטלה");
+  }catch(e){toast("❌ "+e.message);}
+}
+
+
 async function substituteSession(date, groupId){
   A._subDate=date; A._subGroupId=groupId;
   const sess=A.sessions.find(s=>s.group_id===groupId&&s.date===date);
@@ -1300,8 +1322,12 @@ function rGroupDetail(){
     ${A.activeDate?`<div style="font-size:13px;font-weight:700;color:var(--blue-light);margin-bottom:2px">📌 ${fl(A.activeDate)}</div>`:""}
     <div style="height:12px"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
-      <button class="btn btn-p" onclick="openSession(A.activeDate||td(),'${g.id}')">${attendBtn}</button>
+      <button class="btn btn-p" onclick="openSession(A.activeDate||td(),'${g.id}')" ${(()=>{const _s=A.sessions.find(x=>x.date===(A.activeDate||td())&&x.group_id===g.id);return _s&&_s.cancelled?"disabled style='opacity:0.4;cursor:not-allowed'":""})()}>${attendBtn}</button>
       <button class="btn btn-g" onclick="A.subView='assignSailors';renderPage()">👥 נהל חניכים</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
+      ${(()=>{const _s=A.sessions.find(x=>x.date===(A.activeDate||td())&&x.group_id===g.id);const _cancelled=_s&&_s.cancelled;return`<button class="btn btn-sm" style="background:${_cancelled?"rgba(34,197,94,0.15)":"rgba(245,158,11,0.15)"};border:1px solid ${_cancelled?"rgba(34,197,94,0.3)":"rgba(245,158,11,0.3)"};color:${_cancelled?"var(--green)":"#f59e0b"}" onclick="quickCancelFromDetail('${g.id}',A.activeDate||td())">${_cancelled?"✅ בטל דחייה":"⚠️ דחה פעילות"}</button>`;})()}
+      <button class="btn btn-g btn-sm" onclick="substituteSession(A.activeDate||td(),'${g.id}')">🔄 החלפה</button>
     </div>
     <button class="btn btn-g btn-sm" style="margin-bottom:14px" onclick="editGroup('${g.id}')">✏️ ערוך פרטי קבוצה</button>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
