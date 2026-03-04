@@ -1504,7 +1504,8 @@ async function saveAdminCoach(){
   const fullName=f.first_name.trim()+" "+f.last_name.trim();
   try{
     if(A.editCoachId){
-      const lc=(f.login_code||"").trim()||f.id.trim();
+      const lc=(f.login_code||"").trim();
+      if(!lc){toast("⚠️ נא להזין תעודת זהות");return;}
       await dbPa("coaches",`id=eq.${A.editCoachId}`,{name:fullName,first_name:f.first_name.trim(),last_name:f.last_name.trim(),login_code:lc});
       const c=A.allCoaches.find(x=>x.id===A.editCoachId);
       if(c){c.name=fullName;c.first_name=f.first_name.trim();c.last_name=f.last_name.trim();c.login_code=lc;}
@@ -1512,8 +1513,7 @@ async function saveAdminCoach(){
     }else{
       const ex=await dbG("coaches",`id=eq.${f.id.trim()}`);
       if(ex.length){toast("⚠️ ת.ז. כבר קיימת");return;}
-      const lc2=(f.login_code||'').trim()||f.id.trim();
-      const res=(await dbP("coaches",{id:f.id.trim(),name:fullName,first_name:f.first_name.trim(),last_name:f.last_name.trim(),login_code:lc2,approved:true,is_admin:false}))[0];
+      const res=(await dbP("coaches",{id:f.id.trim(),name:fullName,first_name:f.first_name.trim(),last_name:f.last_name.trim(),login_code:f.login_code.trim()||f.id.trim(),approved:true,is_admin:false}))[0];
       A.allCoaches.push(res);toast("✅ מדריך נוסף!");
     }
     A.adminCoachForm={id:"",first_name:"",last_name:"",login_code:""};A.editCoachId=null;A.subView=null;renderPage();
@@ -1547,10 +1547,8 @@ function rAdminCoachForm(){
   return`
     <button class="bbtn" onclick="A.subView=null;A.editCoachId=null;renderPage()">← חזרה</button>
     <h2 style="font-size:20px;font-weight:800;margin-bottom:20px">${isEdit?"✏️ עריכת מדריך":"+ הוסף מדריך"}</h2>
-    <div class="fg"><label class="fl">תעודת זהות</label>
-      <input class="fi" value="${esc(f.id)}" oninput="A.adminCoachForm.id=this.value" placeholder="מספר ת.ז." inputmode="numeric"></div>
-    <div class="fg"><label class="fl">קוד כניסה</label>
-      <input class="fi" value="${esc(f.login_code||f.id)}" oninput="A.adminCoachForm.login_code=this.value" placeholder="ברירת מחדל: כמו ת.ז."></div>
+    <div class="fg"><label class="fl">תעודת זהות (קוד כניסה)</label>
+      <input class="fi" value="${esc(f.login_code||f.id)}" oninput="A.adminCoachForm.login_code=this.value" placeholder="מספר ת.ז." inputmode="numeric"></div>
     <div class="frow">
       <div class="fg"><label class="fl">שם פרטי</label><input class="fi" value="${esc(f.first_name)}" oninput="A.adminCoachForm.first_name=this.value"></div>
       <div class="fg"><label class="fl">שם משפחה</label><input class="fi" value="${esc(f.last_name)}" oninput="A.adminCoachForm.last_name=this.value"></div>
