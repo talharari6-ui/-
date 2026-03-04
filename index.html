@@ -181,7 +181,7 @@ function fl(d){if(!d)return"";return new Intl.DateTimeFormat("he-IL",{weekday:"l
 function esc(s){return(s||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");}
 function toast(msg,ms=2200){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),ms);}
 function rc(r){if(r===null)return"#64748b";return r>=75?"#34d399":r>=50?"#fbbf24":"#f87171";}
-function getG(id){return A.groups.find(g=>g.id===id);}
+function getG(id){return A.groups.find(g=>g.id===id)||(A.allGroups&&A.allGroups.find(g=>g.id===id));}
 function gSailors(gid){const g=getG(gid);if(!g)return[];return(g.sailorIds||[]).map(id=>A.sailors.find(s=>s.id===id)).filter(Boolean);}
 function gSess(gid){return A.sessions.filter(s=>s.group_id===gid);}
 function aRate(sailor,sessions){
@@ -263,6 +263,11 @@ async function loadAdminData(){
     gs.forEach(r=>{if(!gsMap[r.group_id])gsMap[r.group_id]=[];gsMap[r.group_id].push(r.sailor_id);});
   }
   A.allGroups=A.allGroups.map(g=>({...g,sailorIds:gsMap[g.id]||[]}));
+  // Alias so non-admin code paths work for admin too
+  A.groups=A.allGroups;
+  A.sailors=A.allSailors;
+  A.sessions=A.allSessions;
+  A.attendance=A.allAttendance||{};
 }
 
 // ── Auth ──────────────────────────────────────────────────────
@@ -451,7 +456,7 @@ async function openSession(date,gid){
     }
   }
 
-  const existing=A.sessions.find(s=>s.date===date&&s.group_id===gid);
+  const existing=(A.sessions||[]).find(s=>s.date===date&&s.group_id===gid)||(A.allSessions||[]).find(s=>s.date===date&&s.group_id===gid);
   if(existing){
     A.activeSession={...existing};
     if(!A.attendance[existing.id])A.attendance[existing.id]={};
@@ -833,7 +838,7 @@ function rSchedule(isAdmin=false){
             </div>
             <div style="display:flex;border-top:1px solid var(--border)">
               <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:var(--green);font-size:12px;font-weight:700;cursor:pointer" onclick="openSession('${ds}','${g.id}')">✅ נוכחות</button>
-              ${isAdmin?`<button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:#f59e0b;font-size:12px;font-weight:700;cursor:pointer" onclick="quickCancel('${ds}','${g.id}')">⚠️ דחייה</button>`:""}
+              <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:#f59e0b;font-size:12px;font-weight:700;cursor:pointer" onclick="quickCancel('${ds}','${g.id}')">⚠️ דחייה</button>
               <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:var(--blue-light);font-size:12px;font-weight:700;cursor:pointer" onclick="A.activeGroupId='${g.id}';A.activeDate='${ds}';A.subView='assignSailors';renderPage()">👥 חניכים</button>
               <button style="flex:1;padding:9px 4px;background:none;border:none;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer" onclick="A.activeGroupId='${g.id}';A.activeDate='${ds}';A.subView='groupDetail';renderPage()">📋 פרטים</button>
             </div>
