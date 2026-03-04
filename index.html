@@ -1476,7 +1476,7 @@ function rAdminOverview(){
       return`<div class="card" style="margin-bottom:8px">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div>
-            <div style="font-weight:700;font-size:14px">🧑‍🏫 ${esc(c.name)}</div>
+            <div style="display:flex;align-items:center;gap:7px;font-weight:700;font-size:14px">${coachAvatar(c,24)}${esc(c.name)}</div>
             <div style="font-size:11px;color:var(--muted)">${cGroups.length} קבוצות · ${cSessions.length} מפגשים</div>
           </div>
           <div style="text-align:left">
@@ -1559,12 +1559,9 @@ function rAdminCoaches(){
       const approved=c.approved!==false;
       return`<div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <div style="display:flex;align-items:center;gap:10px">
-            ${coachAvatar(c,38)}
-            <div>
-              <div style="font-weight:800;font-size:15px">${esc(c.name)}</div>
-              <div style="font-size:11px;color:var(--muted)">ת"ז: ${c.id} · ${cGroups.length} קבוצות · ${cSailors} חניכים</div>
-            </div>
+          <div>
+              <div style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px">${coachAvatar(c,26)}${esc(c.name)}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">ת"ז: ${c.id} · ${cGroups.length} קבוצות · ${cSailors} חניכים</div>
           </div>
           <div style="display:flex;gap:6px;align-items:center">
             <button onclick="toggleApprove(\'${c.id}\')"
@@ -1673,7 +1670,7 @@ function rAdminHours(){
       const cHours=A.workHours.filter(h=>h.coach_id===c.id);
       const total=cHours.reduce((s,h)=>s+calcHours(h.start_time,h.end_time),0);
       if(!cHours.length)return`<div class="card" style="margin-bottom:8px">
-        <div style="display:flex;align-items:center;gap:8px">${coachAvatar(c,28)}<div style="font-weight:700">${esc(c.name)}</div></div>
+        <div style="display:flex;align-items:center;gap:8px;font-weight:700">${coachAvatar(c,24)}${esc(c.name)}</div>
         <div style="font-size:12px;color:var(--muted)">אין רשומות</div>
       </div>`;
       // group by month
@@ -1681,7 +1678,7 @@ function rAdminHours(){
       cHours.forEach(h=>{const m=h.date.substr(0,7);if(!byM[m])byM[m]=[];byM[m].push(h);});
       return`<div class="card" style="border-right:3px solid var(--purple)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <div style="display:flex;align-items:center;gap:8px">${coachAvatar(c,32)}<div style="font-weight:800;font-size:15px">${esc(c.name)}</div></div>
+          <div style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px">${coachAvatar(c,26)}${esc(c.name)}</div>
           <div style="font-size:18px;font-weight:800;color:var(--blue-light)">${fmtH(total)}</div>
         </div>
         ${Object.keys(byM).sort((a,b)=>b.localeCompare(a)).map(m=>{
