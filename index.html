@@ -593,6 +593,7 @@ async function quickCancelFromDetail(groupId, date){
       const hr=A.workHours.find(h=>h.date===date&&h.coach_id===A.coach?.id);
       if(hr){await dbPa("work_hours",`id=eq.${hr.id}`,{start_time:null,end_time:null});hr.start_time=null;hr.end_time=null;}
     }
+    A.subView="groupDetail";A.activeGroupId=groupId;A.activeDate=date;
     renderPage();toast(cancelled?"⚠️ פעילות דחויה":"✅ דחייה בוטלה");
   }catch(e){toast("❌ "+e.message);}
 }
