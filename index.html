@@ -303,7 +303,7 @@ async function tryLogin(){
   const btn=document.getElementById("lbtn");
   btn.disabled=true;btn.innerHTML='טוען... <span class="spin"></span>';
   try{
-    const ex=await dbG("coaches",`id=eq.${id}`);
+    const ex=await dbG("coaches",`login_code=eq.${id}`);
     if(!ex.length){toast("🚫 לא מורשה — פנה למנהל");btn.disabled=false;btn.textContent="כניסה →";return;}
     const coach=ex[0];
     if(coach.approved===false){toast("🚫 לא מורשה — פנה למנהל");btn.disabled=false;btn.textContent="כניסה →";return;}
@@ -726,7 +726,7 @@ function renderLogin(){
     <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:20px;padding:24px">
       <div class="fg">
         <label class="fl">תעודת זהות</label>
-        <input class="fi" id="lid" type="number" placeholder="הכנס מספר ת.ז." inputmode="numeric" style="font-size:22px;letter-spacing:2px;text-align:center" oninput="chkNew()">
+        <input class="fi" id="lid" type="number" placeholder="קוד כניסה" inputmode="numeric" style="font-size:22px;letter-spacing:2px;text-align:center" oninput="chkNew()">
       </div>
       <div class="fg" id="ng" style="display:none">
         <label class="fl">שמך (הרשמה ראשונה)</label>
@@ -1504,17 +1504,19 @@ async function saveAdminCoach(){
   const fullName=f.first_name.trim()+" "+f.last_name.trim();
   try{
     if(A.editCoachId){
-      await dbPa("coaches",`id=eq.${A.editCoachId}`,{name:fullName,first_name:f.first_name.trim(),last_name:f.last_name.trim()});
+      const lc=(f.login_code||"").trim()||f.id.trim();
+      await dbPa("coaches",`id=eq.${A.editCoachId}`,{name:fullName,first_name:f.first_name.trim(),last_name:f.last_name.trim(),login_code:lc});
       const c=A.allCoaches.find(x=>x.id===A.editCoachId);
-      if(c){c.name=fullName;c.first_name=f.first_name.trim();c.last_name=f.last_name.trim();}
+      if(c){c.name=fullName;c.first_name=f.first_name.trim();c.last_name=f.last_name.trim();c.login_code=lc;}
       toast("✅ מדריך עודכן");
     }else{
       const ex=await dbG("coaches",`id=eq.${f.id.trim()}`);
       if(ex.length){toast("⚠️ ת.ז. כבר קיימת");return;}
-      const res=(await dbP("coaches",{id:f.id.trim(),name:fullName,first_name:f.first_name.trim(),last_name:f.last_name.trim(),approved:true,is_admin:false}))[0];
+      const lc2=(f.login_code||'').trim()||f.id.trim();
+      const res=(await dbP("coaches",{id:f.id.trim(),name:fullName,first_name:f.first_name.trim(),last_name:f.last_name.trim(),login_code:lc2,approved:true,is_admin:false}))[0];
       A.allCoaches.push(res);toast("✅ מדריך נוסף!");
     }
-    A.adminCoachForm={id:"",first_name:"",last_name:""};A.editCoachId=null;A.subView=null;renderPage();
+    A.adminCoachForm={id:"",first_name:"",last_name:"",login_code:""};A.editCoachId=null;A.subView=null;renderPage();
   }catch(e){toast("❌ "+e.message);}
 }
 async function toggleApprove(id){
@@ -1545,8 +1547,10 @@ function rAdminCoachForm(){
   return`
     <button class="bbtn" onclick="A.subView=null;A.editCoachId=null;renderPage()">← חזרה</button>
     <h2 style="font-size:20px;font-weight:800;margin-bottom:20px">${isEdit?"✏️ עריכת מדריך":"+ הוסף מדריך"}</h2>
-    <div class="fg"><label class="fl">תעודת זהות${isEdit?" (לא ניתן לשינוי)":""}</label>
-      <input class="fi" value="${esc(f.id)}" ${isEdit?"disabled style=\"opacity:0.5\"":""} oninput="A.adminCoachForm.id=this.value" placeholder="מספר ת.ז." inputmode="numeric"></div>
+    <div class="fg"><label class="fl">תעודת זהות</label>
+      <input class="fi" value="${esc(f.id)}" oninput="A.adminCoachForm.id=this.value" placeholder="מספר ת.ז." inputmode="numeric"></div>
+    <div class="fg"><label class="fl">קוד כניסה</label>
+      <input class="fi" value="${esc(f.login_code||f.id)}" oninput="A.adminCoachForm.login_code=this.value" placeholder="ברירת מחדל: כמו ת.ז."></div>
     <div class="frow">
       <div class="fg"><label class="fl">שם פרטי</label><input class="fi" value="${esc(f.first_name)}" oninput="A.adminCoachForm.first_name=this.value"></div>
       <div class="fg"><label class="fl">שם משפחה</label><input class="fi" value="${esc(f.last_name)}" oninput="A.adminCoachForm.last_name=this.value"></div>
@@ -1559,7 +1563,7 @@ function rAdminCoaches(){
   return`
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <h2 style="font-size:20px;font-weight:800">🧑‍🏫 מדריכים</h2>
-      <button class="btn btn-p btn-sm" onclick="A.adminCoachForm={id:\'\',first_name:\'\',last_name:\'\'};A.editCoachId=null;A.subView=\'addCoach\';renderPage()">+ הוסף</button>
+      <button class="btn btn-p btn-sm" onclick="A.adminCoachForm={id:\'\',first_name:\'\',last_name:\'\',login_code:\'\'};A.editCoachId=null;A.subView=\'addCoach\';renderPage()">+ הוסף</button>
     </div>
     ${A.allCoaches.map(c=>{
       const cGroups=A.allGroups.filter(g=>g.coach_id===c.id);
@@ -1580,7 +1584,7 @@ function rAdminCoaches(){
               style="background:${c.is_admin?"rgba(124,58,237,0.2)":"rgba(255,255,255,0.06)"};border:1px solid ${c.is_admin?"rgba(124,58,237,0.4)":"var(--border)"};color:${c.is_admin?"var(--purple)":"var(--muted)"};border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer">
               ${c.is_admin?"👑 מנהל":"👤"}
             </button>
-            <button class="btn btn-g btn-sm" onclick="A.adminCoachForm={id:\'${c.id}\',first_name:\'${esc(c.first_name||"")}\',last_name:\'${esc(c.last_name||"")}\' };A.editCoachId=\'${c.id}\';A.subView=\'editCoach\';renderPage()">✏️</button>
+            <button class="btn btn-g btn-sm" onclick="A.adminCoachForm={id:\'${c.id}\',first_name:\'${esc(c.first_name||"")}\',last_name:\'${esc(c.last_name||"")}\',login_code:\'${esc(c.login_code||c.id)}\'};A.editCoachId=\'${c.id}\';A.subView=\'editCoach\';renderPage()">✏️</button>
             <button class="btn btn-d btn-sm" onclick="delCoach(\'${c.id}\')">✕</button>
           </div>
         </div>
