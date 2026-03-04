@@ -132,7 +132,7 @@ select option{background:#0d2444}
     <button class="nb"        id="nav-hours"    onclick="nav('hours')">   <span class="ic">⏱️</span>שעות</button>
     <button class="nb"        id="nav-sailors"  onclick="nav('sailors')"> <span class="ic">👥</span>חניכים</button>
     <button class="nb"        id="nav-history"  onclick="nav('history')"> <span class="ic">📊</span>היסטוריה</button>
-    <button class="nb"        id="nav-settings" onclick="nav('settings')"><span class="ic">⚙️</span>קבוצות</button>
+    <button class="nb"        id="nav-settings" onclick="nav('settings')"><span class="ic">🏊</span>קבוצות</button>
   </nav>
 </div>
 <div class="toast" id="toast"></div>
@@ -885,7 +885,7 @@ function rSchedule(isAdmin=false){
                 <div style="font-weight:700;font-size:13px">${esc(g.name)}${isMe?` <span style="font-size:10px;color:var(--green);font-weight:700">● שלי</span>`:""}</div>
                 <div style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px">${coach?.avatar_url?`<img src="${coach.avatar_url}" style="width:14px;height:14px;border-radius:50%;object-fit:cover">`:""}<span>${esc(coach?.name||"")}${g.start_time?" · ⏰ "+g.start_time+(g.end_time?"–"+g.end_time:""):""}</span></div>
               </div>
-              <span style="font-size:11px;color:var(--muted)">← פתח</span>
+              
             </div>
             <div style="display:flex;border-top:1px solid var(--border)">
               <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:var(--green);font-size:12px;font-weight:700;cursor:pointer" onclick="openSession('${ds}','${g.id}')">✅ נוכחות</button>
@@ -1164,7 +1164,7 @@ function rProfile(){
 function rSettings(){
   const total=new Set(A.groups.flatMap(g=>g.sailorIds)).size;
   return`
-    <h2 style="font-size:22px;font-weight:800;margin-bottom:16px">⚙️ ניהול קבוצות</h2>
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:16px">🏊 ניהול קבוצות</h2>
     <div class="sgrid">
       <div class="sc"><div class="si">🏊</div><div class="sv" style="color:var(--blue)">${A.groups.length}</div><div class="sl">קבוצות</div></div>
       <div class="sc"><div class="si">👥</div><div class="sv" style="color:var(--green)">${total}</div><div class="sl">חניכים</div></div>
@@ -1749,7 +1749,7 @@ function rAdminSettings(){
   const allG=[...A.allGroups].sort((a,b)=>(a.start_time||"99:99").localeCompare(b.start_time||"99:99"));
   return`
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <h2 style="font-size:20px;font-weight:800">⚙️ ניהול קבוצות</h2>
+      <h2 style="font-size:20px;font-weight:800">🏊 ניהול קבוצות</h2>
       <button class="btn btn-p btn-sm" onclick="A.gf=egf();A.editGId=null;A.subView='addGroup';renderPage()">+ קבוצה חדשה</button>
     </div>
     ${allG.map(g=>{
