@@ -192,6 +192,15 @@ function fl(d){
 function esc(s){return(s||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");}
 function toast(msg,ms=2200){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),ms);}
 function rc(r){if(r===null)return"#64748b";return r>=75?"#34d399":r>=50?"#fbbf24":"#f87171";}
+function coachAvatar(coach, size=32){
+  if(!coach)return "";
+  const s=size+"px";
+  const initials=(coach.name||"?")[0].toUpperCase();
+  if(coach.avatar_url){
+    return`<img src="${coach.avatar_url}" style="width:${s};height:${s};border-radius:50%;object-fit:cover;flex-shrink:0">`;
+  }
+  return`<div style="width:${s};height:${s};border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*0.45)}px;font-weight:700;flex-shrink:0">${initials}</div>`;
+}
 function getG(id){return A.groups.find(g=>g.id===id)||(A.allGroups&&A.allGroups.find(g=>g.id===id));}
 function gSailors(gid){const g=getG(gid);if(!g)return[];return(g.sailorIds||[]).map(id=>A.sailors.find(s=>s.id===id)).filter(Boolean);}
 function gSess(gid){return A.sessions.filter(s=>s.group_id===gid);}
@@ -867,7 +876,7 @@ function rSchedule(isAdmin=false){
               <div style="width:8px;height:8px;border-radius:50%;background:${g.color};flex-shrink:0"></div>
               <div style="flex:1;min-width:0">
                 <div style="font-weight:700;font-size:13px">${esc(g.name)}${isMe?` <span style="font-size:10px;color:var(--green);font-weight:700">● שלי</span>`:""}</div>
-                <div style="font-size:11px;color:var(--muted)">${esc(coach?.name||"")}${g.start_time?" · ⏰ "+g.start_time+(g.end_time?"–"+g.end_time:""):""}</div>
+                <div style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px">${coach?.avatar_url?`<img src="${coach.avatar_url}" style="width:14px;height:14px;border-radius:50%;object-fit:cover">`:""}<span>${esc(coach?.name||"")}${g.start_time?" · ⏰ "+g.start_time+(g.end_time?"–"+g.end_time:""):""}</span></div>
               </div>
               <span style="font-size:11px;color:var(--muted)">← פתח</span>
             </div>
@@ -1550,10 +1559,12 @@ function rAdminCoaches(){
       const approved=c.approved!==false;
       return`<div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <div>
-            <div style="font-weight:800;font-size:15px">🧑‍🏫 ${esc(c.name)}</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+            ${coachAvatar(c,38)}
+            <div>
+            <div style="font-weight:800;font-size:15px">${esc(c.name)}</div>
             <div style="font-size:11px;color:var(--muted)">ת"ז: ${c.id} · ${cGroups.length} קבוצות · ${cSailors} חניכים</div>
-          </div>
+            </div>
           <div style="display:flex;gap:6px;align-items:center">
             <button onclick="toggleApprove(\'${c.id}\')"
               style="background:${approved?"rgba(52,211,153,0.2)":"rgba(239,68,68,0.15)"};border:1px solid ${approved?"rgba(52,211,153,0.4)":"rgba(239,68,68,0.3)"};color:${approved?"var(--green)":"var(--red)"};border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer">
@@ -1661,7 +1672,7 @@ function rAdminHours(){
       const cHours=A.workHours.filter(h=>h.coach_id===c.id);
       const total=cHours.reduce((s,h)=>s+calcHours(h.start_time,h.end_time),0);
       if(!cHours.length)return`<div class="card" style="margin-bottom:8px">
-        <div style="font-weight:700">${esc(c.name)}</div>
+        <div style="display:flex;align-items:center;gap:8px">${coachAvatar(c,28)}<div style="font-weight:700">${esc(c.name)}</div></div>
         <div style="font-size:12px;color:var(--muted)">אין רשומות</div>
       </div>`;
       // group by month
@@ -1669,7 +1680,7 @@ function rAdminHours(){
       cHours.forEach(h=>{const m=h.date.substr(0,7);if(!byM[m])byM[m]=[];byM[m].push(h);});
       return`<div class="card" style="border-right:3px solid var(--purple)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <div style="font-weight:800;font-size:15px">🧑‍🏫 ${esc(c.name)}</div>
+          <div style="display:flex;align-items:center;gap:8px">${coachAvatar(c,32)}<div style="font-weight:800;font-size:15px">${esc(c.name)}</div></div>
           <div style="font-size:18px;font-weight:800;color:var(--blue-light)">${fmtH(total)}</div>
         </div>
         ${Object.keys(byM).sort((a,b)=>b.localeCompare(a)).map(m=>{
