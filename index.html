@@ -1177,23 +1177,33 @@ function rSettings(){
     ${[...A.groups].sort((a,b)=>{const da=(a.days_of_week&&a.days_of_week.length?Math.min(...a.days_of_week):99);const db=(b.days_of_week&&b.days_of_week.length?Math.min(...b.days_of_week):99);return da!==db?da-db:(a.start_time||"99:99").localeCompare(b.start_time||"99:99");}).length===0?`<div style="text-align:center;padding:40px 0;color:var(--muted)">
       <div style="font-size:40px;margin-bottom:12px">🏊</div><p>עוד לא הגדרת קבוצות</p>
       <button class="btn btn-p btn-sm" style="margin-top:12px" onclick="A.gf=egf();A.subView='addGroup';renderPage()">צור קבוצה ראשונה</button>
-    </div>`:[...A.groups].sort((a,b)=>{const da=(a.days_of_week&&a.days_of_week.length?Math.min(...a.days_of_week):99);const db=(b.days_of_week&&b.days_of_week.length?Math.min(...b.days_of_week):99);return da!==db?da-db:(a.start_time||"99:99").localeCompare(b.start_time||"99:99");}).map(g=>{
-      const dayStr=(g.days_of_week||[]).map(d=>DS[d]).join(" ");
-      const timeStr=g.start_time?(g.start_time+(g.end_time?"–"+g.end_time:"")):"";
-      return`<div class="gcard" onclick="A.activeGroupId='${g.id}';A.subView='groupDetail';renderPage()">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="width:12px;height:12px;border-radius:50%;background:${g.color};flex-shrink:0"></div>
-            <div style="font-weight:800;font-size:16px">${esc(g.name)}</div>
+    </div>`:(()=>{
+      const sorted=[...A.groups].sort((a,b)=>{const da=(a.days_of_week&&a.days_of_week.length?Math.min(...a.days_of_week):99);const db=(b.days_of_week&&b.days_of_week.length?Math.min(...b.days_of_week):99);return da!==db?da-db:(a.start_time||"99:99").localeCompare(b.start_time||"99:99");});
+      let html="";let lastDay=-1;
+      sorted.forEach(g=>{
+        const firstDay=(g.days_of_week&&g.days_of_week.length?Math.min(...g.days_of_week):-1);
+        if(firstDay!==lastDay){
+          lastDay=firstDay;
+          const dayLabel=firstDay>=0?("יום "+DL[firstDay]):"ללא יום";
+          html+=`<div style="font-size:12px;font-weight:800;color:var(--muted);margin:14px 0 6px;padding-right:6px;border-right:3px solid var(--blue)">${dayLabel}</div>`;
+        }
+        const timeStr=g.start_time?(g.start_time+(g.end_time?"–"+g.end_time:"")):"";
+        html+=`<div class="gcard" onclick="A.activeGroupId=\'${g.id}\';A.subView=\'groupDetail\';renderPage()">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:12px;height:12px;border-radius:50%;background:${g.color};flex-shrink:0"></div>
+              <div style="font-weight:800;font-size:16px">${esc(g.name)}</div>
+            </div>
+            <div style="display:flex;gap:6px" onclick="event.stopPropagation()">
+              <button class="btn btn-g btn-sm" onclick="editGroup(\'${g.id}\')">✏️</button>
+              <button class="btn btn-d btn-sm" onclick="delGroup(\'${g.id}\')">מחק</button>
+            </div>
           </div>
-          <div style="display:flex;gap:6px" onclick="event.stopPropagation()">
-            <button class="btn btn-g btn-sm" onclick="editGroup('${g.id}')">✏️</button>
-            <button class="btn btn-d btn-sm" onclick="delGroup('${g.id}')">מחק</button>
-          </div>
-        </div>
-        <div style="font-size:12px;color:var(--muted);margin-top:4px">${g.sailorIds.length} חניכים · ${gSess(g.id).length} מפגשים${dayStr?" · "+dayStr:""}${timeStr?" · "+timeStr:""}</div>
-      </div>`;
-    }).join("")}
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">${g.sailorIds.length} חניכים · ${gSess(g.id).length} מפגשים${timeStr?" · "+timeStr:""}</div>
+        </div>`;
+      });
+      return html;
+    })()}
   `;
 }
 
