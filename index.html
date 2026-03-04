@@ -1786,18 +1786,27 @@ async function saveCoachField(field, value){
 
 async function uploadAvatar(input){
   const file=input.files[0];if(!file)return;
-  if(file.size>2*1024*1024){toast("⚠️ תמונה גדולה מדי (מקסימום 2MB)");return;}
   toast("⏳ מעלה תמונה...");
   try{
     const reader=new FileReader();
     reader.onload=async(e)=>{
-      const base64=e.target.result;
-      await saveCoachField("avatar_url",base64);
-      // Update header avatar
-      const img=document.getElementById("hdr-avatar-img");
-      if(img)img.innerHTML=`<img src="${base64}" style="width:100%;height:100%;object-fit:cover">`;
-      const sa=document.getElementById("settings-avatar");
-      if(sa)sa.innerHTML=`<img src="${base64}" style="width:100%;height:100%;object-fit:cover"><div style="position:absolute;bottom:0;right:0;background:var(--blue);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px">✏️</div>`;
+      // Compress image using canvas
+      const img2=new Image();
+      img2.onload=async()=>{
+        const canvas=document.createElement("canvas");
+        const MAX=400;
+        let w=img2.width,h=img2.height;
+        if(w>h){if(w>MAX){h=h*MAX/w;w=MAX;}}else{if(h>MAX){w=w*MAX/h;h=MAX;}}
+        canvas.width=w;canvas.height=h;
+        canvas.getContext("2d").drawImage(img2,0,0,w,h);
+        const base64=canvas.toDataURL("image/jpeg",0.85);
+        await saveCoachField("avatar_url",base64);
+        const hdrImg=document.getElementById("hdr-avatar-img");
+        if(hdrImg)hdrImg.innerHTML=`<img src="${base64}" style="width:100%;height:100%;object-fit:cover">`;
+        const sa=document.getElementById("settings-avatar");
+        if(sa)sa.innerHTML=`<img src="${base64}" style="width:100%;height:100%;object-fit:cover"><div style="position:absolute;bottom:0;right:0;background:var(--blue);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px">✏️</div>`;
+      };
+      img2.src=e.target.result;
     };
     reader.readAsDataURL(file);
   }catch(e){toast("❌ "+e.message);}
