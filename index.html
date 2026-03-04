@@ -161,7 +161,7 @@ function egf(){return{name:"",color:COLORS[0],days_of_week:[],start_time:"",end_
 let A={
   coach:null,isAdmin:false,
   groups:[],sailors:[],sessions:[],attendance:{},
-  allCoaches:[],allGroups:[],allSailors:[],allSessions:[],allAttendance:{},workHours:[],adminMonth:new Date().getMonth(),adminYear:new Date().getFullYear(),adminView:"agenda",adminDayDetail:null,
+  allCoaches:[],allGroups:[],allSailors:[],allSessions:[],allAttendance:{},workHours:[],adminMonth:new Date().getMonth(),adminYear:new Date().getFullYear(),adminView:"agenda",adminDayDetail:null,prevView:null,
   view:"schedule",subView:null,
   activeGroupId:null,activeSession:null,activeDate:null,
   form:ef(),editId:null,
@@ -382,9 +382,10 @@ function goBack(){
   else if(A.subView==="session"){A.subView=null;A.activeSession=null;renderPage();}
   else if(A.subView==="assignSailors"){A.subView="groupDetail";renderPage();}
   else if(A.subView==="groupDetail"){
+    const pv=A.prevView;A.prevView=null;
     A.subView=null;A.activeGroupId=null;A.activeDate=null;
-    if(A.view==="schedule")loadScheduleData().then(renderPage);
-    else if(A.view==="admin-overview"){renderPage();}
+    if(pv==="admin-overview"||A.view==="admin-overview"){renderPage();}
+    else if(A.view==="schedule")loadScheduleData().then(renderPage);
     else renderPage();
   }
   else if(A.subView==="addHours"||A.subView==="editHours"){A.subView=null;A.editHId=null;renderPage();}
@@ -1474,7 +1475,7 @@ function rSession(){
   const cnt=ids.filter(id=>att[id]).length;
   const allP=ids.length>0&&ids.every(id=>att[id]);
   return`
-    <button class="bbtn" onclick="A.activeSession=null;A.subView=null;nav('schedule')">← חזרה ללוח</button>
+    <button class="bbtn" onclick="A.activeSession=null;A.subView=A.prevView==='admin-overview'?'groupDetail':null;if(A.prevView==='admin-overview'){renderPage();}else{nav('schedule');}">← חזרה ללוח</button>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div>
         <h2 style="font-size:17px;font-weight:800">✅ נוכחות — ${esc(g?.name||"")}</h2>
@@ -1685,7 +1686,7 @@ function updateAdminDetail(){
       const att=sess?A.allAttendance[sess.id]||{}:{};
       const present=sailors.filter(id=>att[id]).length;
       const hasAtt=Object.keys(att).length>0;
-      return "<div onclick=\"A.activeGroupId='"+g.id+"';A.activeDate='"+dDate+"';A.subView='groupDetail';renderPage()\" style='display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer'>"
+      return "<div onclick=\"A.prevView=A.view;A.activeGroupId='"+g.id+"';A.activeDate='"+dDate+"';A.subView='groupDetail';renderPage()\" style='display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer'>"
         +"<div style='width:3px;height:36px;border-radius:2px;background:"+(isCancelled?"#ef4444":g.color)+"'></div>"
         +"<div style='flex:1'>"
           +"<div style='font-weight:700;font-size:13px;color:"+(isCancelled?"#ef4444":g.color)+"'>"+(isCancelled?"❌ ":"")+esc(g.name)+"</div>"
