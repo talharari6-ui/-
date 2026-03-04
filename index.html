@@ -115,7 +115,12 @@ select option{background:#0d2444}
       <div class="hdr-title">מרכז דניאל לחתירה</div>
       <div class="hdr-sub" id="hdr-sub">חוג שייט | עיריית תל אביב-יפו</div>
     </div>
-    <button class="hdr-out" id="logout-btn" onclick="logout()" style="display:none">יציאה ↩</button>
+    <div style="margin-right:auto;display:flex;align-items:center;gap:8px">
+      <div id="hdr-avatar" style="display:none;cursor:pointer" onclick="nav('settings')" title="פרופיל">
+        <div id="hdr-avatar-img" style="width:34px;height:34px;border-radius:50%;background:var(--border);border:2px solid rgba(255,255,255,0.2);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:16px">👤</div>
+      </div>
+      <button class="hdr-out" id="logout-btn" onclick="logout()" style="display:none">יציאה ↩</button>
+    </div>
   </div>
   <div id="mc" class="content-login">
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;color:var(--muted)">
@@ -313,6 +318,14 @@ function showApp(){
   document.getElementById("bnav").style.display="flex";
   document.getElementById("logout-btn").style.display="block";
   document.getElementById("hdr-sub").textContent=A.isAdmin?"👑 מנהל":(A.coach?.name||"");
+  const avatarEl=document.getElementById("hdr-avatar");
+  const avatarImg=document.getElementById("hdr-avatar-img");
+  if(avatarEl){avatarEl.style.display="flex";}
+  if(avatarImg&&A.coach?.avatar_url){
+    avatarImg.innerHTML=`<img src="${A.coach.avatar_url}" style="width:100%;height:100%;object-fit:cover">`;
+  } else if(avatarImg){
+    avatarImg.textContent=A.coach?.name?A.coach.name[0].toUpperCase():"👤";
+  }
   if(A.isAdmin){
     // show admin nav
     document.getElementById("bnav").innerHTML=`
@@ -1099,7 +1112,36 @@ function rSettings(){
   const total=new Set(A.groups.flatMap(g=>g.sailorIds)).size;
   return`
     <h2 style="font-size:22px;font-weight:800;margin-bottom:4px">⚙️ הגדרות</h2>
-    <p style="color:var(--muted);font-size:13px;margin-bottom:16px">שלום, ${esc(A.coach?.name)}</p>
+    
+    <!-- Profile card -->
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+        <div id="settings-avatar" onclick="document.getElementById('avatar-input').click()" style="width:64px;height:64px;border-radius:50%;background:var(--border);border:2px solid rgba(255,255,255,0.15);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:28px;cursor:pointer;position:relative;flex-shrink:0">
+          ${A.coach?.avatar_url?`<img src="${A.coach.avatar_url}" style="width:100%;height:100%;object-fit:cover">`:`<span>${A.coach?.name?A.coach.name[0].toUpperCase():"👤"}</span>`}
+          <div style="position:absolute;bottom:0;right:0;background:var(--blue);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px">✏️</div>
+        </div>
+        <div>
+          <div style="font-weight:800;font-size:16px">${esc(A.coach?.name)}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">לחץ על התמונה לשינוי</div>
+        </div>
+      </div>
+      <input type="file" id="avatar-input" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <label style="font-size:13px;color:var(--muted);min-width:80px">🎂 יום הולדת</label>
+          <input type="date" id="coach-birthday" value="${A.coach?.birth_date||''}" 
+            onchange="saveCoachField('birth_date',this.value)"
+            style="flex:1;background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-size:13px;color-scheme:dark">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <label style="font-size:13px;color:var(--muted);min-width:80px">📞 טלפון</label>
+          <input type="tel" id="coach-phone" value="${A.coach?.phone||''}" 
+            onchange="saveCoachField('phone',this.value)"
+            placeholder="050-0000000"
+            style="flex:1;background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-size:13px">
+        </div>
+      </div>
+    </div>
     <div class="sgrid">
       <div class="sc"><div class="si">🏊</div><div class="sv" style="color:var(--blue)">${A.groups.length}</div><div class="sl">קבוצות</div></div>
       <div class="sc"><div class="si">👥</div><div class="sv" style="color:var(--green)">${total}</div><div class="sl">חניכים</div></div>
@@ -1725,13 +1767,64 @@ async function delGroupAdmin(id){
       const res=await dbG("coaches",`id=eq.${last}`);
       if(res.length&&res[0].approved!==false){
         A.coach=res[0];A.isAdmin=!!res[0].is_admin;
-        if(A.isAdmin){ADMIN_IDS=[last];await loadAdminData();showApp();return;}
-        await loadAll();await loadScheduleData();showApp();return;
+        if(A.isAdmin){ADMIN_IDS=[last];await loadAdminData();showApp();checkBirthdays();return;}
+        await loadAll();await loadScheduleData();showApp();checkBirthdays();return;
       }
     }catch(e){}
   }
   renderLogin();
 })();
+// ── Profile ───────────────────────────────────────────────────
+async function saveCoachField(field, value){
+  try{
+    await dbPa("coaches","id=eq."+A.coach.id,{[field]:value||null});
+    A.coach[field]=value;
+    if(field==="birth_date") checkBirthdays();
+    toast("✅ נשמר");
+  }catch(e){toast("❌ "+e.message);}
+}
+
+async function uploadAvatar(input){
+  const file=input.files[0];if(!file)return;
+  if(file.size>2*1024*1024){toast("⚠️ תמונה גדולה מדי (מקסימום 2MB)");return;}
+  toast("⏳ מעלה תמונה...");
+  try{
+    const reader=new FileReader();
+    reader.onload=async(e)=>{
+      const base64=e.target.result;
+      await saveCoachField("avatar_url",base64);
+      // Update header avatar
+      const img=document.getElementById("hdr-avatar-img");
+      if(img)img.innerHTML=`<img src="${base64}" style="width:100%;height:100%;object-fit:cover">`;
+      const sa=document.getElementById("settings-avatar");
+      if(sa)sa.innerHTML=`<img src="${base64}" style="width:100%;height:100%;object-fit:cover"><div style="position:absolute;bottom:0;right:0;background:var(--blue);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px">✏️</div>`;
+    };
+    reader.readAsDataURL(file);
+  }catch(e){toast("❌ "+e.message);}
+}
+
+function checkBirthdays(){
+  const today=td();
+  const todayMD=today.slice(5); // MM-DD
+  const coaches=A.allCoaches||[A.coach];
+  coaches.forEach(coach=>{
+    if(!coach.birth_date)return;
+    const bd=coach.birth_date.slice(5); // MM-DD
+    if(bd===todayMD){
+      setTimeout(()=>showBirthdayToast(coach.name),500);
+    }
+  });
+}
+
+function showBirthdayToast(name){
+  const t=document.getElementById("toast");
+  if(!t)return;
+  t.textContent="🎂 יום הולדת שמח ל"+name+"! 🎉";
+  t.style.background="linear-gradient(135deg,#f59e0b,#ec4899)";
+  t.classList.add("show");
+  setTimeout(()=>{t.classList.remove("show");t.style.background="";},5000);
+}
+
 </script>
 </body>
 </html>
