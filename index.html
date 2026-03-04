@@ -204,7 +204,8 @@ function fmtH(h){return h%1===0?h+"ש'":h.toFixed(1)+"ש'";}
 // ── Load ──────────────────────────────────────────────────────
 async function loadAll(){
   const cid=A.coach.id;
-  const groups=await dbG("groups",`coach_id=eq.${cid}`);
+  // Load ALL groups so coach can fill attendance for any group
+  const groups=await dbG("groups","","name.asc");
   const gids=groups.map(g=>g.id);
   let gsMap={};
   if(gids.length){
@@ -282,6 +283,7 @@ async function tryLogin(){
     if(!ex.length){toast("🚫 לא מורשה — פנה למנהל");btn.disabled=false;btn.textContent="כניסה →";return;}
     const coach=ex[0];
     if(coach.approved===false){toast("🚫 לא מורשה — פנה למנהל");btn.disabled=false;btn.textContent="כניסה →";return;}
+    console.log("LOGIN DEBUG:", JSON.stringify({id:coach.id, name:coach.name, is_admin:coach.is_admin, approved:coach.approved}));
     A.coach=coach;
     A.isAdmin=!!coach.is_admin;
     ADMIN_IDS=A.isAdmin?[id]:[];
