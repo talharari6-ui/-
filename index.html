@@ -1375,7 +1375,7 @@ function rSession(){
   const cnt=ids.filter(id=>att[id]).length;
   const allP=ids.length>0&&ids.every(id=>att[id]);
   return`
-    <button class="bbtn" onclick="A.subView='groupDetail';A.activeGroupId='${sess.group_id}';renderPage()">← חזרה לקבוצה</button>
+    <button class="bbtn" onclick="A.activeSession=null;A.subView=null;nav('schedule')">← חזרה ללוח</button>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div>
         <h2 style="font-size:17px;font-weight:800">✅ נוכחות — ${esc(g?.name||"")}</h2>
