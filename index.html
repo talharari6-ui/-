@@ -151,7 +151,7 @@ function egf(){return{name:"",color:COLORS[0],days_of_week:[],start_time:"",end_
 let A={
   coach:null,isAdmin:false,
   groups:[],sailors:[],sessions:[],attendance:{},
-  allCoaches:[],allGroups:[],allSailors:[],allSessions:[],allAttendance:{},workHours:[],
+  allCoaches:[],allGroups:[],allSailors:[],allSessions:[],allAttendance:{},workHours:[],adminMonth:new Date().getMonth(),adminYear:new Date().getFullYear(),
   view:"schedule",subView:null,
   activeGroupId:null,activeSession:null,activeDate:null,
   form:ef(),editId:null,
@@ -262,7 +262,10 @@ async function loadAdminData(){
   A.allCoaches=await dbG("coaches","","name.asc");
   A.allGroups=(await dbG("groups","","name.asc")).map(g=>({...g,days_of_week:g.days_of_week||[]}));
   A.allSailors=await dbG("sailors","","last_name.asc");
-  A.allSessions=await dbG("sessions","","date.desc");
+  const _yr=A.adminYear||new Date().getFullYear();
+  const _mn=A.adminMonth!==undefined?A.adminMonth:new Date().getMonth();
+  const _mnStr=_yr+"-"+String(_mn+1).padStart(2,"0");
+  A.allSessions=await dbG("sessions",`date=gte.${_mnStr}-01&date=lte.${_mnStr}-31`,"date.asc");
   // work hours all
   const wh=await dbG("work_hours","","date.desc");
   A.workHours=wh;
@@ -708,7 +711,7 @@ function renderPage(){
   else if(A.view==="history")setC(rHistory());
   else if(A.view==="settings")setC(rSettings());
   else if(A.view==="profile")setC(rProfile());
-  else if(A.view==="admin-overview")setC(rAdminOverview());
+  else if(A.view==="admin-overview")setC(rAdminMonthly());
   else if(A.view==="admin-coaches")setC(rAdminCoaches());
   else if(A.view==="admin-sailors")setC(rAdminSailors());
   else if(A.view==="admin-hours")setC(rAdminHours());
@@ -1467,6 +1470,91 @@ function rHistory(){
 }
 
 // ── ADMIN VIEWS ───────────────────────────────────────────────
+
+function rAdminMonthly(){
+  const now=new Date();
+  const yr=A.adminYear||now.getFullYear();
+  const mn=A.adminMonth!==undefined?A.adminMonth:now.getMonth();
+  const mName=new Intl.DateTimeFormat("he-IL",{month:"long",year:"numeric"}).format(new Date(yr,mn,1));
+  const dim=new Date(yr,mn+1,0).getDate();
+  const mnStr=String(mn+1).padStart(2,"0");
+
+  // Build sessions for this month grouped by day
+  const monthSessions=A.allSessions.filter(s=>s.date.startsWith(yr+"-"+mnStr)&&!s.cancelled)
+    .sort((a,b)=>a.date.localeCompare(b.date));
+
+  // Group by date
+  const byDate={};
+  monthSessions.forEach(s=>{
+    if(!byDate[s.date])byDate[s.date]=[];
+    byDate[s.date].push(s);
+  });
+
+  const dates=Object.keys(byDate).sort();
+
+  const rows=dates.map(date=>{
+    const sessions=byDate[date];
+    const d=new Date(date+"T00:00:00");
+    const dayLabel="יום "+DL[d.getDay()]+" "+String(d.getDate()).padStart(2,"0")+"/"+mnStr;
+    const isToday=date===td();
+
+    const sessionRows=sessions.map(s=>{
+      const g=A.allGroups.find(x=>x.id===s.group_id);
+      const coach=A.allCoaches.find(x=>x.id===g?.coach_id);
+      const att=A.allAttendance[s.id]||{};
+      const sailors=g?.sailorIds||[];
+      const present=sailors.filter(id=>att[id]).length;
+      const isSubstitute=s.substitute_coach_id;
+      const subCoach=isSubstitute?A.allCoaches.find(x=>x.id===s.substitute_coach_id):null;
+
+      return`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-bottom:1px solid rgba(255,255,255,0.05);font-size:13px">
+        <div style="display:flex;align-items:center;gap:8px;flex:1">
+          <div style="width:8px;height:8px;border-radius:50%;background:${g?.color||"#888"};flex-shrink:0"></div>
+          <div>
+            <div style="font-weight:700">${esc(g?.name||"")}</div>
+            <div style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px">
+              ${coachAvatar(subCoach||coach,16)}
+              <span style="${isSubstitute?"color:var(--yellow)":""}">${isSubstitute?"🔄 "+esc(subCoach?.name||""):esc(coach?.name||"")}</span>
+              ${s.start_time?`· ${s.start_time}`:""}
+            </div>
+          </div>
+        </div>
+        <div style="text-align:left;flex-shrink:0">
+          <div style="font-weight:700;color:var(--blue-light)">${sailors.length} חניכים</div>
+          ${Object.keys(att).length?`<div style="font-size:11px;color:${present===sailors.length?"var(--green)":"var(--muted)"}">${present}/${sailors.length} נוכחים</div>`:""}
+        </div>
+      </div>`;
+    }).join("");
+
+    return`<div style="margin-bottom:10px;background:var(--card);border:1px solid ${isToday?"var(--blue)":"var(--border)"};border-radius:12px;overflow:hidden">
+      <div style="padding:8px 12px;background:${isToday?"rgba(59,130,246,0.15)":"rgba(255,255,255,0.03)"};font-weight:800;font-size:13px;color:${isToday?"var(--blue-light)":"var(--text)"}">
+        ${dayLabel}${isToday?` <span style="font-size:11px;color:var(--blue-light)">• היום</span>`:""}
+        <span style="float:left;font-size:11px;color:var(--muted);font-weight:400">${sessions.length} פעילויות</span>
+      </div>
+      ${sessionRows}
+    </div>`;
+  }).join("");
+
+  return`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+      <h2 style="font-size:22px;font-weight:800">👑 מסוף מנהל</h2>
+      <span class="admin-badge">ADMIN</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 12px">
+      <button class="warr" onclick="A.adminMonth--;if(A.adminMonth<0){A.adminMonth=11;A.adminYear--;}loadAdminData().then(renderPage)">&#8594;</button>
+      <div style="flex:1;text-align:center;font-weight:800;font-size:16px">${mName}</div>
+      <button class="warr" onclick="A.adminMonth++;if(A.adminMonth>11){A.adminMonth=0;A.adminYear++;}loadAdminData().then(renderPage)">&#8592;</button>
+      ${(yr!==now.getFullYear()||mn!==now.getMonth())?`<button class="btn btn-g btn-sm" onclick="A.adminMonth=${now.getMonth()};A.adminYear=${now.getFullYear()};loadAdminData().then(renderPage)">היום</button>`:""}
+    </div>
+    <div class="sgrid" style="margin-bottom:16px">
+      <div class="sc"><div class="si">📅</div><div class="sv" style="color:var(--purple)">${monthSessions.length}</div><div class="sl">פעילויות</div></div>
+      <div class="sc"><div class="si">⚠️</div><div class="sv" style="color:var(--yellow)">${A.allSessions.filter(s=>s.date.startsWith(yr+"-"+mnStr)&&s.cancelled).length}</div><div class="sl">דחיות</div></div>
+      <div class="sc"><div class="si">👥</div><div class="sv" style="color:var(--green)">${new Set(A.allGroups.flatMap(g=>g.sailorIds||[])).size}</div><div class="sl">חניכים</div></div>
+    </div>
+    ${dates.length===0?`<div style="text-align:center;padding:40px 0;color:var(--muted)"><div style="font-size:40px">📅</div><p>אין פעילויות מתוכננות לחודש זה</p></div>`:rows}
+  `;
+}
+
 function rAdminOverview(){
   const totalHours=A.workHours.reduce((s,h)=>s+calcHours(h.start_time,h.end_time),0);
   const totalAtt=Object.values(A.allAttendance).reduce((s,att)=>s+Object.values(att).filter(Boolean).length,0);
