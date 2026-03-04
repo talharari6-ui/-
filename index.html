@@ -879,7 +879,7 @@ function rSchedule(isAdmin=false){
         :items.map(({g,coach,isMe})=>`
           <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;border-right:3px solid ${g.color};${isMe||isAdmin?"":"opacity:0.55"}overflow:hidden">
             ${(function(){var _s=A.sessions.find(function(x){return x.date===ds&&x.group_id===g.id;});return _s&&_s.cancelled?'<div style="background:rgba(245,158,11,0.1);padding:4px 12px;font-size:11px;font-weight:700;color:#f59e0b;border-bottom:1px solid rgba(245,158,11,0.2)">'+"⚠️ דחוי"+(_s.cancel_reason?" · "+esc(_s.cancel_reason):"")+'</div>':""})()}
-            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px">
               <div style="width:8px;height:8px;border-radius:50%;background:${g.color};flex-shrink:0"></div>
               <div style="flex:1;min-width:0">
                 <div style="font-weight:700;font-size:13px">${esc(g.name)}${isMe?` <span style="font-size:10px;color:var(--green);font-weight:700">● שלי</span>`:""}</div>
