@@ -1584,7 +1584,7 @@ function rAdminMonthly(){
     const isToday=dateStr===todayStr;
     const isPast=dateStr&&dateStr<todayStr;
 
-    if(!isValid){cells+=`<div style="min-height:80px"></div>`;continue;}
+    if(!isValid){cells+=`<div style="min-height:80px;background:transparent"></div>`;continue;}
 
     // Groups scheduled this day of week
     const dow=new Date(dateStr+"T00:00:00").getDay();
@@ -1614,7 +1614,7 @@ function rAdminMonthly(){
       </div>`;
     }).join("");
 
-    cells+=`<div style="min-height:80px;padding:4px;border-radius:8px;border:1px solid ${isToday?"var(--blue)":"var(--border)"};background:${isToday?"rgba(59,130,246,0.1)":isPast?"rgba(0,0,0,0.1)":"var(--card)"}">
+    cells+=`<div style="min-height:80px;height:100%;padding:4px;border-radius:8px;border:1px solid ${isToday?"var(--blue)":"var(--border)"};background:${isToday?"rgba(59,130,246,0.1)":isPast?"rgba(0,0,0,0.1)":"var(--card)"}">
       <div style="font-weight:${isToday?"800":"600"};font-size:11px;color:${isToday?"var(--blue-light)":"var(--text)"};margin-bottom:3px">${day}</div>
       ${groupItems}
     </div>`;
@@ -1635,12 +1635,33 @@ function rAdminMonthly(){
     </div>
     <div class="sgrid" style="margin-bottom:12px">
       <div class="sc"><div class="si">📅</div><div class="sv" style="color:var(--purple)">${monthSess.length}</div><div class="sl">פעילויות</div></div>
-      <div class="sc"><div class="si">⚠️</div><div class="sv" style="color:var(--yellow)">${monthCanc.length}</div><div class="sl">דחיות</div></div>
+      <div class="sc" style="cursor:pointer" onclick="exportMonthlyCancellations(${yr},${mn})"><div class="si">⚠️</div><div class="sv" style="color:var(--yellow)">${monthCanc.length}</div><div class="sl">דחיות 📥</div></div>
       <div class="sc"><div class="si">👥</div><div class="sv" style="color:var(--green)">${new Set(A.allGroups.flatMap(g=>g.sailorIds||[])).size}</div><div class="sl">חניכים</div></div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px">${dayHdrs}</div>
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">${cells}</div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:2px">${dayHdrs}</div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;grid-auto-rows:1fr">${cells}</div>
   `;
+}
+
+
+function exportMonthlyCancellations(yr, mn){
+  const mnStr=String(mn+1).padStart(2,"0");
+  const canc=A.allSessions.filter(s=>s.cancelled&&s.date.startsWith(yr+"-"+mnStr));
+  if(!canc.length){toast("אין דחיות לחודש זה");return;}
+  const mName=new Intl.DateTimeFormat("he-IL",{month:"long",year:"numeric"}).format(new Date(yr,mn,1));
+  const rows=[["תאריך","קבוצה","מדריך","סיבה"]];
+  canc.sort((a,b)=>a.date.localeCompare(b.date)).forEach(s=>{
+    const g=A.allGroups.find(x=>x.id===s.group_id);
+    const coach=A.allCoaches.find(x=>x.id===g?.coach_id);
+    rows.push([ff(s.date),g?.name||"",coach?.name||"",s.cancel_reason||""]);
+  });
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`דחיות_${mName}.csv`;
+  a.click();
+  toast("📥 דוח דחיות יוצא");
 }
 
 
