@@ -1428,7 +1428,7 @@ function rHistory(){
       <button class="filter-btn ${A.historyFilter==='mine'?'active':''}" onclick="A.historyFilter='mine';renderPage()">⭐ שלי</button>
     </div>
     ${cb}
-    ${(A.historyFilter==='mine'?A.groups:(A.allGroups&&A.allGroups.length?A.allGroups:A.groups)).map(g=>{
+    ${(A.historyFilter==='mine'?(A.allGroups||A.groups).filter(g=>g.coach_id===A.coach?.id):(A.allGroups&&A.allGroups.length?A.allGroups:A.groups)).map(g=>{
       const sess=gSess(g.id).sort((a,b)=>a.date.localeCompare(b.date));
       const sailors=gSailors(g.id);
       if(!sess.length&&!sailors.length)return"";
