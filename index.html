@@ -1004,7 +1004,7 @@ async function clearHours(date){
   const rec=A.workHours.find(h=>h.date===date);
   if(!rec)return;
   try{
-    if(rec.id)await dbPa("work_hours","id=eq."+rec.id,{start_time:null,end_time:null,notes:null});
+    if(rec.id){await dbD("work_hours","id=eq."+rec.id);rec.id=null;}
     rec.start_time="";rec.end_time="";rec.notes="";
     const st=document.getElementById("st-"+date);
     const et=document.getElementById("et-"+date);
