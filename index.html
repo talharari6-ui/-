@@ -1174,10 +1174,10 @@ function rSettings(){
       <div class="stitle" style="margin-bottom:0">הקבוצות שלי</div>
       <button class="btn btn-p btn-sm" onclick="A.gf=egf();A.subView='addGroup';renderPage()">+ קבוצה חדשה</button>
     </div>
-    ${[...A.groups].sort((a,b)=>(a.start_time||"99:99").localeCompare(b.start_time||"99:99")).length===0?`<div style="text-align:center;padding:40px 0;color:var(--muted)">
+    ${[...A.groups].sort((a,b)=>{const da=(a.days_of_week&&a.days_of_week.length?Math.min(...a.days_of_week):99);const db=(b.days_of_week&&b.days_of_week.length?Math.min(...b.days_of_week):99);return da!==db?da-db:(a.start_time||"99:99").localeCompare(b.start_time||"99:99");}).length===0?`<div style="text-align:center;padding:40px 0;color:var(--muted)">
       <div style="font-size:40px;margin-bottom:12px">🏊</div><p>עוד לא הגדרת קבוצות</p>
       <button class="btn btn-p btn-sm" style="margin-top:12px" onclick="A.gf=egf();A.subView='addGroup';renderPage()">צור קבוצה ראשונה</button>
-    </div>`:[...A.groups].sort((a,b)=>(a.start_time||"99:99").localeCompare(b.start_time||"99:99")).map(g=>{
+    </div>`:[...A.groups].sort((a,b)=>{const da=(a.days_of_week&&a.days_of_week.length?Math.min(...a.days_of_week):99);const db=(b.days_of_week&&b.days_of_week.length?Math.min(...b.days_of_week):99);return da!==db?da-db:(a.start_time||"99:99").localeCompare(b.start_time||"99:99");}).map(g=>{
       const dayStr=(g.days_of_week||[]).map(d=>DS[d]).join(" ");
       const timeStr=g.start_time?(g.start_time+(g.end_time?"–"+g.end_time:"")):"";
       return`<div class="gcard" onclick="A.activeGroupId='${g.id}';A.subView='groupDetail';renderPage()">
