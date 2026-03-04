@@ -1734,9 +1734,10 @@ function rAdminCalendarGrid(yr,mn,mnStr,dim,todayStr,sessMap){
     </div>`;
   }
 
-  return`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px">${dayHdrs}</div>
+  return`${detail}
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px">${dayHdrs}</div>
     <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">${cells}</div>
-    ${detail}`;
+  `;
 }
 
 
