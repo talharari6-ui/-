@@ -895,19 +895,19 @@ function rHours(){
         <input type="time" style="background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;font-size:14px;width:90px;color-scheme:dark;${isFuture?"pointer-events:none":""}" 
           value="${rec?rec.start_time:""}" 
           placeholder="כניסה"
-          onchange="autoSaveHours('${dateStr}','start',this.value)"
+          oninput="autoSaveHours('${dateStr}','start',this.value)"
           id="st-${dateStr}">
         <span style="color:var(--muted);font-size:12px">–</span>
         <input type="time" style="background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;font-size:14px;width:90px;color-scheme:dark;${isFuture?"pointer-events:none":""}" 
           value="${rec?rec.end_time:""}" 
           placeholder="יציאה"
-          onchange="autoSaveHours('${dateStr}','end',this.value)"
+          oninput="autoSaveHours('${dateStr}','end',this.value)"
           id="et-${dateStr}">
         ${rec&&rec.start_time&&rec.end_time?`<span style="font-size:12px;font-weight:700;color:var(--green);min-width:32px">${fmtH(calcHours(rec.start_time,rec.end_time))}</span>`:`<span style="min-width:32px"></span>`}
         <input style="background:rgba(0,0,0,0.2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;font-size:12px;flex:1;min-width:60px;color-scheme:dark" 
           value="${rec?esc(rec.notes||""):""}" 
           placeholder="הערה..."
-          onchange="autoSaveHours('${dateStr}','notes',this.value)"
+          oninput="autoSaveHours('${dateStr}','notes',this.value)"
           id="nt-${dateStr}">
         ${rec&&rec.start_time&&rec.end_time?`<button onclick="showCopyModal('${dateStr}')" style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:var(--blue-light);border-radius:8px;padding:6px 8px;font-size:12px;cursor:pointer;white-space:nowrap">📋</button>`:""}
         <span id="sv-${dateStr}" style="font-size:10px;color:var(--green);font-weight:700;opacity:0;transition:opacity 0.3s;min-width:40px">✓ נשמר</span>
@@ -984,16 +984,16 @@ async function persistHours(date){
   if(!rec.start_time&&!rec.end_time&&!rec.notes)return;
   try{
     if(rec.id){
-      await dbPa("work_hours",`id=eq.${rec.id}`,{start_time:rec.start_time,end_time:rec.end_time,notes:rec.notes||null});
+      await dbPa("work_hours",`id=eq.${rec.id}`,{start_time:rec.start_time||null,end_time:rec.end_time||null,notes:rec.notes||null});
     }else{
-      const res=(await dbP("work_hours",{coach_id:A.coach.id,date,start_time:rec.start_time,end_time:rec.end_time,notes:rec.notes||null}))[0];
+      const res=(await dbP("work_hours",{coach_id:A.coach.id,date,start_time:rec.start_time||null,end_time:rec.end_time||null,notes:rec.notes||null}))[0];
       rec.id=res.id;
     }
     var st2=document.getElementById("st-"+date);
     if(st2){var el2=st2.parentElement;if(el2){el2.style.background="rgba(52,211,153,0.08)";setTimeout(function(){if(el2)el2.style.background="";},1500);}}
     var savedEl=document.getElementById("sv-"+date);
     if(savedEl){savedEl.textContent="✓ נשמר";savedEl.style.opacity="1";setTimeout(function(){if(savedEl)savedEl.style.opacity="0";},2000);}
-  }catch(e){toast("❌ שגיאת שמירה");}
+  }catch(e){console.error("persistHours error:",e);toast("❌ שגיאת שמירה: "+e.message);}
 }
 
 function showCopyModal(date){
