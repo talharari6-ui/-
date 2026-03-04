@@ -195,8 +195,8 @@ function ssave(){try{localStorage.setItem("sailing_last",A.coach?.id||"");}catch
 function wkStart(off=0){const d=new Date();d.setDate(d.getDate()-d.getDay()+off*7);d.setHours(0,0,0,0);return d;}
 function calcHours(s,e){
   if(!s||!e)return 0;
-  const [sh,sm]=s.split(":").map(Number);
-  const [eh,em]=e.split(":").map(Number);
+  const sp=s.split(":");const sh=+sp[0],sm=+sp[1];
+  const ep=e.split(":");const eh=+ep[0],em=+ep[1];
   return Math.max(0,((eh*60+em)-(sh*60+sm))/60);
 }
 function fmtH(h){return h%1===0?h+"ש'":h.toFixed(1)+"ש'";}
@@ -231,6 +231,7 @@ async function loadAll(){
 async function loadHours(){
   const cid=A.coach.id;
   A.workHours=await dbG("work_hours","coach_id=eq."+cid,"date.desc");
+  console.log("workHours loaded:",A.workHours.length,"records",A.workHours.slice(0,2));
 }
 async function loadScheduleData(){
   A.allCoaches=await dbG("coaches","","name.asc");
