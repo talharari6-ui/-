@@ -541,13 +541,9 @@ async function toggleAtt(sid){
 }
 function promptCancelSession(){
   const sess=A.activeSession;if(!sess)return;
-  if(sess.cancelled){
-    quickCancel(sess.date,sess.group_id);
-    return;
-  }
   const reason=prompt("סיבת דחייה (אופציונלי):");
   if(reason===null)return;
-  quickCancel(sess.date,sess.group_id);
+  cancelSession(reason);
 }
 async function cancelSession(reason){
   const sess=A.activeSession;if(!sess)return;
