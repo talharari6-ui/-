@@ -156,7 +156,7 @@ let A={
   activeGroupId:null,activeSession:null,activeDate:null,
   form:ef(),editId:null,
   gf:egf(),editGId:null,
-  weekOffset:0,monthOffset:0,scheduleFilter:"all",hoursYear:null,hoursMonth:undefined,
+  weekOffset:0,monthOffset:0,scheduleFilter:"all",historyFilter:"all",hoursYear:null,hoursMonth:undefined,
   hForm:{date:td(),start_time:"",end_time:"",notes:""},editHId:null,
 };
 function ef(){return{first_name:"",last_name:"",birth_date:"",join_date:td(),shirt_size:"M",parent_name:"",parent_phone:"",gender:"male",boat:"Optimist"};}
@@ -1422,8 +1422,13 @@ function rHistory(){
     <div style="text-align:center;padding:60px 0;color:var(--muted)"><div style="font-size:48px">📊</div><p>עוד אין נתונים</p></div>`;
   const myCancelled=A.sessions.filter(s=>s.cancelled).sort((a,b)=>b.date.localeCompare(a.date));
   const cb=myCancelled.length?`<div class="card" style="border-right:3px solid var(--yellow);margin-bottom:16px"><div style="font-weight:800;font-size:14px;color:var(--yellow);margin-bottom:8px">⚠️ פעילויות שדחיתי (${myCancelled.length})</div>${myCancelled.map(s=>{const g=getG(s.group_id);return`<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-weight:600">${esc(g?.name||"")} · ${ff(s.date)}</span><span style="color:var(--muted)">${s.cancel_reason?esc(s.cancel_reason):"ללא סיבה"}</span></div>`;}).join("")}</div>`:"";
-  return`<h2 style="font-size:20px;font-weight:800;margin-bottom:16px">📊 היסטוריה</h2>${cb}
-    ${A.groups.map(g=>{
+  return`<h2 style="font-size:20px;font-weight:800;margin-bottom:12px">📊 היסטוריה</h2>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="filter-btn ${A.historyFilter==='all'?'active':''}" onclick="A.historyFilter='all';renderPage()">🌐 הכל</button>
+      <button class="filter-btn ${A.historyFilter==='mine'?'active':''}" onclick="A.historyFilter='mine';renderPage()">⭐ שלי</button>
+    </div>
+    ${cb}
+    ${(A.historyFilter==='mine'?A.groups:(A.allGroups&&A.allGroups.length?A.allGroups:A.groups)).map(g=>{
       const sess=gSess(g.id).sort((a,b)=>a.date.localeCompare(b.date));
       const sailors=gSailors(g.id);
       if(!sess.length&&!sailors.length)return"";
