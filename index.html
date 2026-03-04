@@ -567,6 +567,7 @@ async function cancelSession(reason){
         hr.start_time=null;hr.end_time=null;
       }
     }
+    if(cancelled){goBack();}
     renderPage();toast(cancelled?"⚠️ פעילות סומנה כדחויה — שעות נמחקו":"✅ דחייה בוטלה");
   }catch(e){toast("❌ "+e.message);}
 }
@@ -1611,7 +1612,7 @@ function rAdminMonthly(){
           ${isCancelled?"❌ ":""}${esc(g.name)}
         </div>
         <div style="color:rgba(255,255,255,0.5);font-size:8px">
-          ${coachAvatar(coach,10)} ${esc(coach?.name||"")}
+          ${sess?.substitute_coach_id?(()=>{const sub=A.allCoaches.find(x=>x.id===sess.substitute_coach_id);return coachAvatar(sub,10)+" <span style='color:#f59e0b'>🔄 "+esc(sub?.name||"")+"</span>";})():coachAvatar(coach,10)+" "+esc(coach?.name||"")}
         </div>
         ${hasAtt?`<div style="color:${present===sailors.length?"#34d399":"#f59e0b"};font-size:8px">${present}/${sailors.length}</div>`:`<div style="color:rgba(255,255,255,0.3);font-size:8px">${sailors.length} חנ'</div>`}
       </div>`;
