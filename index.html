@@ -900,19 +900,19 @@ function rHours(){
         <input type="time" style="background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;font-size:14px;width:90px;color-scheme:dark;${isFuture?"pointer-events:none":""}" 
           value="${rec?rec.start_time:""}" 
           placeholder="כניסה"
-          oninput="autoSaveHours('${dateStr}','start_time',this.value)"
+          onchange="autoSaveHours('${dateStr}','start_time',this.value)"
           id="st-${dateStr}">
         <span style="color:var(--muted);font-size:12px">–</span>
         <input type="time" style="background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;font-size:14px;width:90px;color-scheme:dark;${isFuture?"pointer-events:none":""}" 
           value="${rec?rec.end_time:""}" 
           placeholder="יציאה"
-          oninput="autoSaveHours('${dateStr}','end_time',this.value)"
+          onchange="autoSaveHours('${dateStr}','end_time',this.value)"
           id="et-${dateStr}">
         ${rec&&rec.start_time&&rec.end_time?`<span style="font-size:12px;font-weight:700;color:var(--green);min-width:32px">${fmtH(calcHours(rec.start_time,rec.end_time))}</span>`:`<span style="min-width:32px"></span>`}
         <input style="background:rgba(0,0,0,0.2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;font-size:12px;flex:1;min-width:60px;color-scheme:dark" 
           value="${rec?esc(rec.notes||""):""}" 
           placeholder="הערה..."
-          oninput="autoSaveHours('${dateStr}','notes',this.value)"
+          onchange="autoSaveHours('${dateStr}','notes',this.value)" oninput="autoSaveHours('${dateStr}','notes',this.value)"
           id="nt-${dateStr}">
         ${rec&&rec.start_time&&rec.end_time?`<button onclick="showCopyModal('${dateStr}')" style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:var(--blue-light);border-radius:8px;padding:6px 8px;font-size:12px;cursor:pointer;white-space:nowrap">📋</button>`:""}
         <span id="sv-${dateStr}" style="font-size:10px;color:var(--green);font-weight:700;opacity:0;transition:opacity 0.3s;min-width:40px">✓ נשמר</span>
@@ -967,6 +967,7 @@ function autoSaveHours(date,field,value){
   let rec=A.workHours.find(h=>h.date===date);
   if(!rec){rec={id:null,coach_id:A.coach.id,date,start_time:"",end_time:"",notes:""};A.workHours.push(rec);}
   rec[field]=value;
+  console.log("autoSave:",date,field,"=",value,"rec now:",JSON.stringify({st:rec.start_time,et:rec.end_time}));
   // update hours span inline
   if(rec.start_time&&rec.end_time){
     const h=calcHours(rec.start_time,rec.end_time);
