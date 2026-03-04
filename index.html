@@ -1657,6 +1657,49 @@ function rAdminMonthly(){
 }
 
 
+function updateAdminDetail(){
+  const container=document.getElementById("admin-detail-panel");
+  if(!container){renderPage();return;}
+  if(!A.adminDayDetail){container.innerHTML="";return;}
+  const dDate=A.adminDayDetail;
+  const mnStr=dDate.slice(5,7);
+  const dDow=new Date(dDate+"T00:00:00").getDay();
+  const dGroups=A.allGroups.filter(g=>(g.days_of_week||[]).includes(dDow));
+  const sessMap={};
+  A.allSessions.forEach(s=>{if(!sessMap[s.date])sessMap[s.date]=[];sessMap[s.date].push(s);});
+  const dSess=sessMap[dDate]||[];
+  const dDay=parseInt(dDate.split("-")[2]);
+  container.innerHTML=`<div style="margin-bottom:14px;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border)">
+      <div style="font-weight:800">יום ${DL[dDow]} ${String(dDay).padStart(2,"0")}/${mnStr}</div>
+      <button onclick="A.adminDayDetail=null;updateAdminDetail()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>
+    </div>
+    ${dGroups.map(g=>{
+      const sess=dSess.find(s=>s.group_id===g.id);
+      const isCancelled=sess?.cancelled;
+      const sub=sess?.substitute_coach_id?A.allCoaches.find(x=>x.id===sess.substitute_coach_id):null;
+      const coach=A.allCoaches.find(x=>x.id===g.coach_id);
+      const sailors=g.sailorIds||[];
+      const att=sess?A.allAttendance[sess.id]||{}:{};
+      const present=sailors.filter(id=>att[id]).length;
+      const hasAtt=Object.keys(att).length>0;
+      return "<div style='display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04)'>"
+        +"<div style='width:3px;height:36px;border-radius:2px;background:"+(isCancelled?"#ef4444":g.color)+"'></div>"
+        +"<div style='flex:1'>"
+          +"<div style='font-weight:700;font-size:13px;color:"+(isCancelled?"#ef4444":g.color)+"'>"+(isCancelled?"❌ ":"")+esc(g.name)+"</div>"
+          +"<div style='font-size:11px;color:"+(sub?"var(--yellow)":"var(--muted)")+";display:flex;align-items:center;gap:4px;margin-top:2px'>"
+            +coachAvatar(sub||coach,16)+" "+(sub?"🔄 "+esc(sub.name):esc(coach?.name||""))
+          +"</div>"
+        +"</div>"
+        +"<div style='font-size:12px;font-weight:700;color:"+(hasAtt?(present===sailors.length?"var(--green)":"var(--yellow)"):"var(--muted)")+"'>"
+          +(hasAtt?present+"/"+sailors.length:sailors.length+" חנ'")
+        +"</div>"
+        +"</div>";
+    }).join("")}
+  </div>`;
+}
+
+
 function rAdminCalendarGrid(yr,mn,mnStr,dim,todayStr,sessMap){
   const firstDow=new Date(yr,mn,1).getDay();
   const totalCells=Math.ceil((firstDow+dim)/7)*7;
@@ -1686,7 +1729,7 @@ function rAdminCalendarGrid(yr,mn,mnStr,dim,todayStr,sessMap){
         outline:${hasAtt?"2px solid #34d39388":"none"}"></div>`;
     }).join("");
 
-    cells+=`<div onclick="A.adminDayDetail='${dateStr}';renderPage()" style="
+    cells+=`<div onclick="A.adminDayDetail='${dateStr}';updateAdminDetail()" style="
       min-height:70px;padding:5px;border-radius:8px;cursor:${scheduledGroups.length?'pointer':'default'};
       border:1px solid ${isToday?"var(--blue)":"var(--border)"};
       background:${isToday?"rgba(59,130,246,0.12)":isPast?"rgba(0,0,0,0.15)":"var(--card)"};
@@ -1707,7 +1750,7 @@ function rAdminCalendarGrid(yr,mn,mnStr,dim,todayStr,sessMap){
     detail=`<div style="margin-top:14px;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border)">
         <div style="font-weight:800">יום ${"יום "+DL[dDow]} ${String(dDay).padStart(2,"0")}/${mnStr}</div>
-        <button onclick="A.adminDayDetail=null;renderPage()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>
+        <button onclick="A.adminDayDetail=null;updateAdminDetail()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>
       </div>
       ${dGroups.map(g=>{
         const sess=dSess.find(s=>s.group_id===g.id);
@@ -1734,7 +1777,7 @@ function rAdminCalendarGrid(yr,mn,mnStr,dim,todayStr,sessMap){
     </div>`;
   }
 
-  return`${detail}
+  return`<div id="admin-detail-panel">${detail}</div>
     <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px">${dayHdrs}</div>
     <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">${cells}</div>
   `;
