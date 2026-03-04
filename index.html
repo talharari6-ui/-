@@ -1620,7 +1620,7 @@ function rAdminMonthly(){
       const present=sailors.filter(id=>att[id]).length;
       const hasAtt=Object.keys(att).length>0;
 
-      return`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;
+      return`<div onclick="A.subView=null;A.prevView=A.view;A.activeGroupId='${g.id}';A.activeDate='${dateStr}';A.subView='groupDetail';renderPage()" style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;
         background:${isCancelled?"rgba(239,68,68,0.08)":"rgba(255,255,255,0.03)"};
         border-radius:10px;border:1px solid ${isCancelled?"rgba(239,68,68,0.3)":isPast?"var(--border)":"rgba(255,255,255,0.08)"};
         opacity:${isPast&&!sess?"0.5":"1"}">
