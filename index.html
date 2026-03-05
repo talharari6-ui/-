@@ -2406,10 +2406,10 @@ function rAdminSubstitutions(){
       const d=new Date(s.date+"T12:00:00");
       const dayStr=d.toLocaleDateString("he-IL",{weekday:"short",day:"numeric",month:"numeric"});
       return `<tr>
-        <td style="${tdS};color:var(--muted)">${dayStr}</td>
-        <td style="${tdS}">${esc(g?.name||"")}</td>
-        <td style="${tdS}">${esc(origCoach?.name||"")}</td>
         <td style="${tdS};color:#a78bfa">${esc(subCoach?.name||"")}</td>
+        <td style="${tdS}">${esc(origCoach?.name||"")}</td>
+        <td style="${tdS}">${esc(g?.name||"")}</td>
+        <td style="${tdS};color:var(--muted)">${dayStr}</td>
       </tr>`;
     }).join("");
 
@@ -2425,13 +2425,13 @@ function rAdminSubstitutions(){
       <button class="btn btn-g btn-sm" onclick="A.adminMonth=${nextMn};A.adminYear=${nextYr};renderPage()">←</button>
     </div>
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden">
-      <table style="width:100%;border-collapse:collapse;direction:rtl;table-layout:fixed">
+      <table style="width:100%;border-collapse:collapse;table-layout:fixed">
         <thead>
           <tr style="border-bottom:2px solid var(--border)">
-            <th style="padding:10px 16px;text-align:right;font-size:13px;color:var(--muted);font-weight:400;width:25%">תאריך</th>
-            <th style="padding:10px 16px;text-align:right;font-size:13px;color:var(--muted);font-weight:400;width:25%">קבוצה</th>
-            <th style="padding:10px 16px;text-align:right;font-size:13px;color:var(--muted);font-weight:400;width:25%">מדריך מקורי</th>
             <th style="padding:10px 16px;text-align:right;font-size:13px;color:#a78bfa;font-weight:400;width:25%">מדריך מחליף</th>
+            <th style="padding:10px 16px;text-align:right;font-size:13px;color:var(--muted);font-weight:400;width:25%">מדריך מקורי</th>
+            <th style="padding:10px 16px;text-align:right;font-size:13px;color:var(--muted);font-weight:400;width:25%">קבוצה</th>
+            <th style="padding:10px 16px;text-align:right;font-size:13px;color:var(--muted);font-weight:400;width:25%">תאריך</th>
           </tr>
         </thead>
         <tbody>${tableRows}</tbody>
