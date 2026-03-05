@@ -706,6 +706,14 @@ async function substituteSession(date, groupId){
           if(card2){const bar2=card2.querySelector(".sub-bar-inner");if(bar2)bar2.remove();}
           toast("✅ הוסרת מרשימת המחליפים");
         } else {
+          // Fetch fresh from DB to check current substitute
+          const freshSess=(await dbG("sessions",`group_id=eq.${groupId}&date=eq.${date}`))[0];
+          if(freshSess) { if(sess) Object.assign(sess,freshSess); else { sess=freshSess; A.sessions.push(sess); } }
+          if(sess&&sess.substitute_coach_id&&sess.substitute_coach_id!==me.id){
+            const existingSub=(A.allCoaches||[]).find(x=>x.id===sess.substitute_coach_id);
+            toast("⚠️ "+(existingSub?.name||"מדריך אחר")+" כבר רשום כמחליף");
+            return;
+          }
           if(!sess){const res=await dbP("sessions",{group_id:groupId,date,substitute_coach_id:me.id});sess=res[0];A.sessions.push(sess);}
           else{await dbPa("sessions",`id=eq.${sess.id}`,{substitute_coach_id:me.id});sess.substitute_coach_id=me.id;}
           A.subSessions=A.subSessions||[];
