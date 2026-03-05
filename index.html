@@ -1308,10 +1308,22 @@ async function clearHours(date){
     toast("🗑️ שעות נוקו");
   }catch(e){toast("❌ "+e.message);}
 }
+function normalizeTime(t){
+  if(!t) return t;
+  // "9" -> "09:00", "14" -> "14:00", "9:" -> "09:00"
+  if(/^\d{1,2}:?$/.test(t.trim())) return t.trim().replace(':','').padStart(2,'0')+':00';
+  return t;
+}
 async function persistHours(date){
   const rec=A.workHours.find(h=>h.date===date);
   if(!rec)return;
   if(!rec.start_time&&!rec.end_time&&!rec.notes)return;
+  // Normalize times
+  rec.start_time=normalizeTime(rec.start_time);
+  rec.end_time=normalizeTime(rec.end_time);
+  // Update input fields visually
+  const stEl=document.getElementById('st-'+date);if(stEl&&rec.start_time)stEl.value=rec.start_time;
+  const etEl=document.getElementById('et-'+date);if(etEl&&rec.end_time)etEl.value=rec.end_time;
   // Don't save if only one of start/end is filled
   if((rec.start_time&&!rec.end_time)||(rec.end_time&&!rec.start_time))return;
   try{
