@@ -255,8 +255,9 @@ async function loadAll(){
   const ownSessions=gids.length?await dbG("sessions",`group_id=in.(${gids.join(",")})`):[]; 
   // Also load sessions where this coach is substitute
   let subSessions=[];
-  try{subSessions=await dbG("sessions",`substitute_coach_id=eq.${cid}`)||[];}catch(e){console.warn("subSessions error:",e);}
-  console.log("cid:",cid,"subSessions found:",subSessions.length,subSessions);
+  try{subSessions=await dbG("sessions",`substitute_coach_id=eq.${cid}`)||[];}catch(e){}
+  // Store substitute sessions separately for easy access
+  A.subSessions=subSessions;
   // Merge, deduplicate
   const sessById={};
   [...ownSessions,...subSessions].forEach(s=>{sessById[s.id]=s;});
@@ -1126,15 +1127,26 @@ function rHours(){
     const myGIds=new Set((A.groups||[]).filter(g=>g.coach_id===A.coach?.id).map(g=>g.id));
     const mySessToday=(A.sessions||[]).filter(s=>s.date===dateStr&&myGIds.has(s.group_id));
     const cancelledSess=mySessToday.filter(s=>s.cancelled);
-    const subSess=(A.sessions||[]).filter(s=>s.date===dateStr&&s.substitute_coach_id===A.coach?.id);
+    // Sessions where I'm substitute (from dedicated store)
+    const subSess=(A.subSessions||[]).filter(s=>s.date===dateStr);
+    // Sessions where I was replaced (my group, someone else is substitute)
+    const replacedSess=mySessToday.filter(s=>s.substitute_coach_id&&s.substitute_coach_id!==A.coach?.id);
     let dayNotice="";
     if(cancelledSess.length){
       const names=cancelledSess.map(s=>{const g=(A.groups||[]).find(x=>x.id===s.group_id);return g?esc(g.name):"";}).filter(Boolean).join(", ");
       dayNotice+=`<div style="font-size:11px;color:#f59e0b;margin-top:4px;width:100%">⚠️ הפעילות "${names}" נדחתה</div>`;
     }
     if(subSess.length){
-      const subNames=subSess.map(s=>{const g=(A.allGroups||A.groups||[]).find(x=>x.id===s.group_id);return g?esc(g.name):"";}).filter(Boolean).join(", ");
-      dayNotice+=`<div style="font-size:11px;color:var(--blue-light);margin-top:4px;width:100%">🔄 החלפת את הפעילות "${subNames}"</div>`;
+      const allG=A.allGroups&&A.allGroups.length?A.allGroups:A.groups||[];
+      const subNames=subSess.map(s=>{const g=allG.find(x=>x.id===s.group_id);return g?esc(g.name):"";}).filter(Boolean).join(", ");
+      dayNotice+=`<div style="font-size:11px;color:var(--blue-light);margin-top:4px;width:100%">🔄 החלפת את הפעילות "${subNames||"?"}"</div>`;
+    }
+    if(replacedSess.length){
+      replacedSess.forEach(s=>{
+        const g=(A.groups||[]).find(x=>x.id===s.group_id);
+        const subCoach=(A.allCoaches||[]).find(x=>x.id===s.substitute_coach_id);
+        dayNotice+=`<div style="font-size:11px;color:#a78bfa;margin-top:4px;width:100%">👤 ${esc(subCoach?.name||"מדריך")} החליף אותך בפעילות "${esc(g?.name||"")}"</div>`;
+      });
     }
     
     rows+=`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
