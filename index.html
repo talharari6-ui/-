@@ -252,7 +252,13 @@ async function loadAll(){
   A.groups=groups.map(g=>({...g,sailorIds:gsMap[g.id]||[],days_of_week:g.days_of_week||[]}));
   // Load ALL sailors globally so coaches can assign any sailor to their groups
   A.sailors=await dbG("sailors","","last_name.asc");
-  A.sessions=gids.length?await dbG("sessions",`group_id=in.(${gids.join(",")})`):[]; 
+  const ownSessions=gids.length?await dbG("sessions",`group_id=in.(${gids.join(",")})`):[]; 
+  // Also load sessions where this coach is substitute
+  const subSessions=await dbG("sessions",`substitute_coach_id=eq.${cid}`,"");
+  // Merge, deduplicate
+  const sessById={};
+  [...ownSessions,...subSessions].forEach(s=>{sessById[s.id]=s;});
+  A.sessions=Object.values(sessById);
   A.attendance={};
   const sids=A.sessions.map(s=>s.id);
   if(sids.length){
