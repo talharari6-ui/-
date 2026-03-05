@@ -254,9 +254,19 @@ async function loadAll(){
   A.sailors=await dbG("sailors","","last_name.asc");
   const ownSessions=gids.length?await dbG("sessions",`group_id=in.(${gids.join(",")})`):[]; 
   // Also load sessions where this coach is substitute
+  // Find the actual DB row id of the coach (cid is login_code/tz)
+  // A.allCoaches is loaded in admin flow but not here - fetch coach's DB id
   let subSessions=[];
-  try{subSessions=await dbG("sessions",`substitute_coach_id=eq.${cid}`)||[];}catch(e){}
-  // Store substitute sessions separately for easy access
+  try{
+    // The coach object from login has id=login_code; need the DB numeric/uuid id
+    // allCoaches is loaded later, so find from the coach record itself
+    const coachRecord=(await dbG("coaches",`login_code=eq.${cid}`))||[];
+    const dbCoachId=coachRecord[0]?.id;
+    A.dbCoachId=dbCoachId;
+    if(dbCoachId){
+      subSessions=await dbG("sessions",`substitute_coach_id=eq.${dbCoachId}`)||[];
+    }
+  }catch(e){}
   A.subSessions=subSessions;
   // Merge, deduplicate
   const sessById={};
@@ -676,7 +686,7 @@ async function quickCancelFromDetail(groupId, date){
 async function substituteSession(date, groupId){
   A._subDate=date; A._subGroupId=groupId;
   const sess=A.sessions.find(s=>s.group_id===groupId&&s.date===date);
-  const coaches=(A.allCoaches||[]).filter(x=>x.id!==A.coach?.id);
+  const coaches=(A.allCoaches||[]).filter(x=>x.id!==A.coach?.id&&!x.is_admin);
   const list=document.getElementById("sub-list");
   const clearBtn=document.getElementById("sub-clear-btn");
   if(!list)return;
@@ -1130,7 +1140,7 @@ function rHours(){
     // Sessions where I'm substitute (from dedicated store)
     const subSess=(A.subSessions||[]).filter(s=>s.date===dateStr);
     // Sessions where I was replaced (my group, someone else is substitute)
-    const replacedSess=mySessToday.filter(s=>s.substitute_coach_id&&s.substitute_coach_id!==A.coach?.id);
+    const replacedSess=mySessToday.filter(s=>s.substitute_coach_id&&s.substitute_coach_id!==(A.dbCoachId||A.coach?.id));
     let dayNotice="";
     if(cancelledSess.length){
       const names=cancelledSess.map(s=>{const g=(A.groups||[]).find(x=>x.id===s.group_id);return g?esc(g.name):"";}).filter(Boolean).join(", ");
