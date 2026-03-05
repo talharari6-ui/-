@@ -1182,7 +1182,7 @@ function rHours(){
           placeholder="יציאה"
           onchange="autoSaveHours('${dateStr}','end_time',this.value)" onblur="fixTimeInput(this,'${dateStr}','end_time')"
           id="et-${dateStr}">
-        ${rec&&rec.start_time&&rec.end_time?`<span style="font-size:12px;font-weight:700;color:var(--green);min-width:32px">${fmtH(calcHours(rec.start_time,rec.end_time))}</span>`:`<span style="min-width:32px"></span>`}
+        ${rec&&rec.start_time&&rec.end_time?`<span id="hspan-${dateStr}" style="font-size:12px;font-weight:700;color:var(--green);min-width:32px">${fmtH(calcHours(rec.start_time,rec.end_time))}</span>`:`<span id="hspan-${dateStr}" style="min-width:32px"></span>`}
         <input style="background:rgba(0,0,0,0.2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;font-size:12px;flex:1;min-width:60px;color-scheme:dark" 
           value="${rec?esc(rec.notes||""):""}" 
           placeholder="הערה..."
@@ -1301,6 +1301,7 @@ async function clearHours(date){
     const nt=document.getElementById("nt-"+date);
     if(st)st.value="";if(et)et.value="";if(nt)nt.value="";
     const sp=document.getElementById("sv-"+date);if(sp)sp.textContent="";
+    const hspan=document.getElementById("hspan-"+date);if(hspan)hspan.textContent="";
     const cpyEl=document.getElementById("cpybtn-"+date);if(cpyEl)cpyEl.innerHTML="";
     const clrEl=document.getElementById("clrbtn-"+date);if(clrEl)clrEl.style.display="none";
     // update totals
