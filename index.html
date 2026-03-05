@@ -1006,8 +1006,8 @@ function rSchedule(isAdmin=false){
       const isToday=ds===todayStr;
       let items=mmap[ds]||[];
       if(!isAdmin&&A.scheduleFilter==="mine")items=items.filter(x=>x.isMe);
-      // For month view panel: only show coach's own groups as dots
-      const myItems=isAdmin?items:items.filter(x=>x.isMe);
+      // Show all groups as dots
+      const myItems=items;
       items.sort((a,b)=>(a.g.start_time||"99:99").localeCompare(b.g.start_time||"99:99"));
       const dots2=myItems.map(({g})=>{
         const sessD=(map[ds]||[]).find(s=>s.group_id===g.id);
