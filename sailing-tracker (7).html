@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="חוג שייט">
+<meta name="theme-color" content="#0a1628">
+<title>חוג שייט | מרכז דניאל</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --bg:#0a1628; --bg2:#0d2444; --bg3:#0e3060;
+    --card:rgba(255,255,255,0.05); --border:rgba(255,255,255,0.09);
+    --blue:#3b82f6; --blue-light:#7dd3fc;
+    --green:#34d399; --red:#f87171; --yellow:#fbbf24;
+    --text:#e0f2fe; --muted:#64748b;
+    --radius:16px; --safe-bottom:env(safe-area-inset-bottom,0px);
+  }
+  html,body { height:100%; background:var(--bg); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:var(--text); overflow:hidden; }
+  #app { height:100vh; display:flex; flex-direction:column; }
+
+  .header {
+    background:rgba(0,0,0,0.5); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+    border-bottom:1px solid var(--border); padding:12px 16px;
+    padding-top:max(12px,env(safe-area-inset-top));
+    display:flex; align-items:center; gap:10px; flex-shrink:0;
+  }
+  .header-title { font-size:15px; font-weight:800; color:var(--blue-light); }
+  .header-sub { font-size:10px; color:var(--muted); }
+
+  .content {
+    flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    padding:16px; padding-bottom:calc(150px + var(--safe-bottom));
+    background:linear-gradient(160deg,var(--bg) 0%,var(--bg2) 50%,var(--bg3) 100%);
+  }
+
+  .bottom-nav {
+    position:fixed; bottom:0; left:0; right:0;
+    background:rgba(5,10,25,0.95); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+    border-top:1px solid var(--border); display:flex;
+    padding-bottom:var(--safe-bottom); z-index:100;
+  }
+  .nav-btn {
+    flex:1; padding:10px 4px; background:none; border:none; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    color:var(--muted); font-size:10px; font-weight:600; transition:color 0.15s;
+  }
+  .nav-btn.active { color:var(--blue-light); }
+  .nav-btn .icon { font-size:22px; line-height:1; }
+
+  .card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:12px; }
+  .card-blue { border-color:rgba(59,130,246,0.25); }
+  .card-red { border-color:rgba(248,113,113,0.2); }
+
+  .stats-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:16px; }
+  .stat-card { background:var(--card); border-radius:14px; padding:14px 10px; text-align:center; border:1px solid var(--border); }
+  .stat-icon { font-size:22px; margin-bottom:4px; }
+  .stat-val { font-size:22px; font-weight:800; }
+  .stat-label { font-size:10px; color:var(--muted); margin-top:2px; }
+
+  .section-title { font-size:13px; font-weight:700; color:var(--muted); margin-bottom:10px; }
+
+  .btn { border:none; cursor:pointer; font-weight:700; border-radius:12px; padding:14px 20px; font-size:15px; width:100%; display:block; text-align:center; transition:opacity 0.15s; }
+  .btn:active { opacity:0.8; }
+  .btn-primary { background:linear-gradient(135deg,#2563eb,#1d4ed8); color:white; box-shadow:0 4px 20px rgba(37,99,235,0.35); }
+  .btn-excel { background:linear-gradient(135deg,#166534,#15803d); color:white; }
+  .btn-sheets { background:linear-gradient(135deg,#1e40af,#1d4ed8); color:white; }
+  .btn-sm { padding:8px 14px; font-size:13px; border-radius:9px; width:auto; display:inline-block; }
+  .btn-ghost { background:rgba(255,255,255,0.06); color:var(--muted); border:1px solid var(--border); }
+  .btn-danger { background:rgba(239,68,68,0.15); color:var(--red); border:1px solid rgba(239,68,68,0.3); }
+
+  .form-group { margin-bottom:14px; }
+  .form-label { display:block; font-size:12px; color:var(--muted); font-weight:600; margin-bottom:6px; }
+  .form-input {
+    width:100%; background:rgba(0,0,0,0.35); border:1px solid var(--border); color:var(--text);
+    padding:12px 14px; border-radius:10px; font-size:16px; outline:none; -webkit-appearance:none;
+  }
+  .form-input:focus { border-color:var(--blue); }
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+  .toggle-row { display:flex; gap:8px; }
+  .toggle-btn {
+    flex:1; padding:11px 8px; border-radius:10px; border:1px solid var(--border);
+    background:rgba(0,0,0,0.2); color:var(--muted); font-weight:700; font-size:13px;
+    cursor:pointer; text-align:center; transition:all 0.15s;
+  }
+  .toggle-btn.active { background:rgba(59,130,246,0.25); border-color:rgba(59,130,246,0.5); color:var(--blue-light); }
+
+  .size-row { display:flex; gap:6px; flex-wrap:wrap; }
+  .size-pill {
+    padding:7px 12px; border-radius:8px; border:1px solid var(--border);
+    background:rgba(0,0,0,0.2); color:var(--muted); font-weight:700; font-size:12px; cursor:pointer;
+  }
+  .size-pill.active { background:rgba(59,130,246,0.25); border-color:rgba(59,130,246,0.5); color:var(--blue-light); }
+
+  .sailor-card { display:flex; align-items:center; gap:12px; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:10px; }
+  .avatar { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+  .avatar-male { background:linear-gradient(135deg,#2563eb30,#1e40af40); }
+  .avatar-female { background:linear-gradient(135deg,#ec489930,#be185d40); }
+  .sailor-right { margin-right:auto; display:flex; align-items:center; gap:10px; }
+
+  .attend-row {
+    display:flex; align-items:center; gap:12px; padding:14px; border-radius:14px; margin-bottom:8px;
+    cursor:pointer; border:1px solid transparent; -webkit-user-select:none; user-select:none; transition:all 0.15s;
+  }
+  .attend-row.present { background:rgba(52,211,153,0.1); border-color:rgba(52,211,153,0.25); }
+  .attend-row.absent { background:rgba(255,255,255,0.03); border-color:rgba(255,255,255,0.07); }
+  .attend-check {
+    width:36px; height:36px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px; font-weight:800; margin-right:auto; transition:all 0.15s;
+  }
+  .attend-check.present { background:rgba(52,211,153,0.25); border:2px solid var(--green); color:var(--green); }
+  .attend-check.absent { background:rgba(239,68,68,0.1); border:2px solid rgba(239,68,68,0.3); color:var(--red); }
+
+  .progress-bar { height:5px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden; margin-top:8px; }
+  .progress-fill { height:100%; border-radius:3px; }
+  .dots-row { display:flex; gap:3px; flex-wrap:wrap; margin-top:8px; }
+  .dot { width:12px; height:12px; border-radius:3px; }
+
+  .badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:700; }
+  .badge-warn { background:rgba(239,68,68,0.2); color:var(--red); }
+
+  input[type="date"] { color-scheme:dark; }
+  .back-btn { background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; padding:0; margin-bottom:16px; display:flex; align-items:center; gap:4px; }
+  .counter-pill { background:rgba(52,211,153,0.15); border:1px solid rgba(52,211,153,0.3); border-radius:20px; padding:5px 14px; font-size:13px; font-weight:700; color:var(--green); }
+
+  .toast { position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:#1e293b; border:1px solid var(--border); border-radius:12px; padding:12px 20px; font-size:14px; font-weight:600; z-index:200; opacity:0; transition:opacity 0.3s; pointer-events:none; white-space:nowrap; }
+  .toast.show { opacity:1; }
+
+  .session-item {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:12px 14px; background:var(--card); border:1px solid var(--border);
+    border-radius:12px; margin-bottom:8px; cursor:pointer; transition:border-color 0.15s;
+  }
+  .session-item:active { border-color:var(--blue-light); }
+
+  .table-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  table { border-collapse:collapse; font-size:12px; }
+  th,td { padding:8px 10px; white-space:nowrap; }
+  th { color:var(--muted); font-weight:600; text-align:right; border-bottom:1px solid var(--border); }
+  td { border-bottom:1px solid rgba(255,255,255,0.04); }
+  select option { background:#0d2444; }
+
+  @media (min-width:500px) {
+    .content { max-width:480px; margin:0 auto; }
+    .bottom-nav { max-width:480px; left:50%; transform:translateX(-50%); border-radius:20px 20px 0 0; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <span style="font-size:24px">⛵</span>
+    <div>
+      <div class="header-title">מרכז דניאל לחתירה</div>
+      <div class="header-sub">חוג שייט | עיריית תל אביב-יפו</div>
+    </div>
+  </div>
+  <div class="content" id="content"></div>
+  <nav class="bottom-nav">
+    <button class="nav-btn active" id="nav-dashboard" onclick="navigate('dashboard')"><span class="icon">🏠</span>בית</button>
+    <button class="nav-btn" id="nav-sailors" onclick="navigate('sailors')"><span class="icon">👥</span>חניכים</button>
+    <button class="nav-btn" id="nav-session" onclick="openTodaySession()"><span class="icon">✅</span>נוכחות</button>
+    <button class="nav-btn" id="nav-history" onclick="navigate('history')"><span class="icon">📊</span>היסטוריה</button>
+  </nav>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const BOATS = ["Optimist","RS Feva","RS Toura"];
+const SIZES = ["XS","S","M","L","XL","XXL"];
+
+// ── State ─────────────────────────────────────────────────────
+let S = {
+  view: "dashboard",
+  sailors: [],
+  sessions: [],
+  activeSession: null,
+  sessionDate: today(),
+  form: { firstName:"", lastName:"", birthDate:"", joinDate:"", shirtSize:"M", parentName:"", parentPhone:"", gender:"male", boat:"Optimist" },
+  editId: null,
+};
+
+// ── Persist ───────────────────────────────────────────────────
+function save() {
+  try {
+    localStorage.setItem("ss_sailors", JSON.stringify(S.sailors));
+    localStorage.setItem("ss_sessions", JSON.stringify(S.sessions));
+  } catch(e) {}
+}
+function load() {
+  try {
+    const a = localStorage.getItem("ss_sailors");
+    const b = localStorage.getItem("ss_sessions");
+    if (a) S.sailors = JSON.parse(a);
+    if (b) S.sessions = JSON.parse(b);
+  } catch(e) {}
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+function uid() { return Math.random().toString(36).substr(2,9); }
+function today() { return new Date().toISOString().split("T")[0]; }
+function fmtShort(d) { const dt=new Date(d); return `${String(dt.getDate()).padStart(2,"0")}/${String(dt.getMonth()+1).padStart(2,"0")}`; }
+function fmtLong(d) { return new Intl.DateTimeFormat("he-IL",{weekday:"long",year:"numeric",month:"long",day:"numeric"}).format(new Date(d)); }
+function esc(s) { return (s||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;"); }
+
+// Attendance rate counts only sessions after sailor's join date
+function attendRate(sailor) {
+  const joinDate = sailor.joinDate || "2000-01-01";
+  const rel = S.sessions.filter(s => s.date >= joinDate);
+  if (!rel.length) return null;
+  const attended = rel.filter(s => s.attendance[sailor.id]).length;
+  return Math.round(attended / rel.length * 100);
+}
+function rateColor(r) {
+  if (r===null) return "#64748b";
+  return r>=75 ? "#34d399" : r>=50 ? "#fbbf24" : "#f87171";
+}
+function showToast(msg, ms=2000) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"), ms);
+}
+
+// ── Navigation ────────────────────────────────────────────────
+function navigate(view) {
+  S.view = view;
+  document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
+  const nb = document.getElementById("nav-"+view);
+  if (nb) nb.classList.add("active");
+  renderPage();
+  document.getElementById("content").scrollTop = 0;
+}
+
+function openTodaySession() {
+  openSession(S.sessionDate);
+  document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
+  document.getElementById("nav-session").classList.add("active");
+}
+
+function openSession(date) {
+  S.sessionDate = date;
+  const existing = S.sessions.find(s=>s.date===date);
+  if (existing) {
+    S.activeSession = JSON.parse(JSON.stringify(existing));
+  } else {
+    const att = {};
+    S.sailors.forEach(s=>{ att[s.id]=false; });
+    S.activeSession = { id:uid(), date, attendance:att };
+  }
+  S.sailors.forEach(s=>{
+    if (S.activeSession.attendance[s.id]===undefined) S.activeSession.attendance[s.id]=false;
+  });
+  S.view = "session";
+  document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
+  document.getElementById("nav-session").classList.add("active");
+  renderPage();
+  document.getElementById("content").scrollTop = 0;
+}
+
+// ── Actions ───────────────────────────────────────────────────
+function addSailor() {
+  const f = S.form;
+  if (!f.firstName.trim()||!f.lastName.trim()) { showToast("⚠️ נא למלא שם פרטי ושם משפחה"); return; }
+  if (S.editId) {
+    // Save edit
+    const idx = S.sailors.findIndex(s=>s.id===S.editId);
+    if (idx>=0) S.sailors[idx] = { ...f, id:S.editId };
+    S.editId = null;
+    save(); showToast("✅ פרטים עודכנו!");
+  } else {
+    S.sailors.push({ ...f, id:uid() });
+    save(); showToast("✅ חניך נוסף!");
+  }
+  S.form = { firstName:"", lastName:"", birthDate:"", joinDate:today(), shirtSize:"M", parentName:"", parentPhone:"", gender:"male", boat:"Optimist" };
+  navigate("sailors");
+}
+
+function editSailor(id) {
+  const s = S.sailors.find(s=>s.id===id);
+  if (!s) return;
+  S.editId = id;
+  S.form = { ...s };
+  S.view = "addSailor";
+  renderPage();
+  document.getElementById("content").scrollTop = 0;
+}
+
+function deleteSailor(id) {
+  if (!confirm("למחוק את החניך?")) return;
+  S.sailors = S.sailors.filter(s=>s.id!==id);
+  save(); renderPage();
+}
+
+// Toggle attendance WITHOUT re-rendering the whole page — keyboard stays open
+function toggleAttendance(id) {
+  S.activeSession.attendance[id] = !S.activeSession.attendance[id];
+  autoSaveSession();
+  const present = S.activeSession.attendance[id];
+  const row = document.getElementById("arow-"+id);
+  const check = document.getElementById("acheck-"+id);
+  if (row) row.className = "attend-row "+(present?"present":"absent");
+  if (check) { check.className="attend-check "+(present?"present":"absent"); check.textContent=present?"✓":"✗"; }
+  const cnt = Object.values(S.activeSession.attendance).filter(Boolean).length;
+  const counter = document.getElementById("attend-counter");
+  if (counter) counter.textContent = `${cnt}/${S.sailors.length}`;
+}
+
+function toggleAll() {
+  const allPresent = S.sailors.every(s=>S.activeSession.attendance[s.id]);
+  S.sailors.forEach(s=>{ S.activeSession.attendance[s.id]=!allPresent; });
+  autoSaveSession();
+  renderPage();
+}
+
+function autoSaveSession() {
+  const idx = S.sessions.findIndex(s=>s.id===S.activeSession.id);
+  if (idx>=0) S.sessions[idx] = S.activeSession;
+  else S.sessions.push(S.activeSession);
+  save();
+}
+
+// ── Form helpers (no re-render = keyboard stays) ──────────────
+function setGender(g) {
+  S.form.gender = g;
+  document.querySelectorAll(".toggle-btn[data-gender]").forEach(b=>{
+    b.classList.toggle("active", b.dataset.gender===g);
+  });
+}
+function setSize(sz) {
+  S.form.shirtSize = sz;
+  document.querySelectorAll(".size-pill[data-size]").forEach(b=>{
+    b.classList.toggle("active", b.dataset.size===sz);
+  });
+}
+
+// ── Export ────────────────────────────────────────────────────
+function toCSV(rows) {
+  return rows.map(r=>r.map(c=>{
+    const s=String(c??"");
+    return (s.includes(",")||s.includes('"')||s.includes("\n"))?`"${s.replace(/"/g,'""')}"`:s;
+  }).join(",")).join("\n");
+}
+function dlCSV(content,name) {
+  const blob=new Blob(["\uFEFF"+content],{type:"text/csv;charset=utf-8;"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click();
+}
+function exportExcel() {
+  const sorted=[...S.sessions].sort((a,b)=>a.date.localeCompare(b.date));
+  const rows=[
+    ["שם מלא","סירה","תאריך הצטרפות",...sorted.map(s=>fmtShort(s.date)),'סה"כ','% נוכחות'],
+    ...S.sailors.map(s=>{
+      const joinDate=s.joinDate||"2000-01-01";
+      const rel=sorted.filter(sess=>sess.date>=joinDate);
+      const marks=sorted.map(sess=>sess.date>=joinDate?(sess.attendance[s.id]?"✓":"✗"):"—");
+      const tot=rel.filter(sess=>sess.attendance[s.id]).length;
+      const pct=rel.length?Math.round(tot/rel.length*100)+"%":"—";
+      return [s.firstName+" "+s.lastName, s.boat, s.joinDate||"", ...marks, tot, pct];
+    })
+  ];
+  dlCSV(toCSV(rows),`נוכחות_${today()}.csv`);
+  showToast("📥 הקובץ הורד!");
+}
+function exportSheets() { exportExcel(); setTimeout(()=>window.open("https://sheets.new","_blank"),400); }
+function exportSailors() {
+  const rows=[
+    ["שם פרטי","שם משפחה","תאריך לידה","תאריך הצטרפות","מגדר","סירה","מידת חולצה","שם הורה","טלפון הורה"],
+    ...S.sailors.map(s=>[s.firstName,s.lastName,s.birthDate,s.joinDate,s.gender==="male"?"בן":"בת",s.boat,s.shirtSize,s.parentName,s.parentPhone])
+  ];
+  dlCSV(toCSV(rows),`חניכים_${today()}.csv`);
+  showToast("📥 הקובץ הורד!");
+}
+function exportSailorsSheets() { exportSailors(); setTimeout(()=>window.open("https://sheets.new","_blank"),400); }
+
+// ── Render ────────────────────────────────────────────────────
+function renderPage() {
+  const el=document.getElementById("content");
+  if (S.view==="dashboard") el.innerHTML=renderDashboard();
+  else if (S.view==="sailors") el.innerHTML=renderSailors();
+  else if (S.view==="addSailor") el.innerHTML=renderAddSailor();
+  else if (S.view==="session") el.innerHTML=renderSession();
+  else if (S.view==="history") el.innerHTML=renderHistory();
+}
+
+function renderDashboard() {
+  const avgAtt = S.sessions.length
+    ? Math.round(S.sessions.reduce((a,s)=>a+Object.values(s.attendance).filter(Boolean).length,0)/S.sessions.length) : null;
+  const recentSessions = [...S.sessions].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
+
+  return `
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:4px">שלום! 👋</h2>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:16px">${fmtLong(today())}</p>
+
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-icon">⛵</div><div class="stat-val" style="color:var(--blue)">${S.sailors.length}</div><div class="stat-label">חניכים</div></div>
+      <div class="stat-card"><div class="stat-icon">📅</div><div class="stat-val" style="color:var(--green)">${S.sessions.length}</div><div class="stat-label">מפגשים</div></div>
+      <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-val" style="color:var(--yellow)">${avgAtt!==null?avgAtt:"—"}</div><div class="stat-label">ממוצע</div></div>
+    </div>
+
+    <div class="card card-blue">
+      <div class="section-title">🌊 פתח מפגש חדש</div>
+      <input type="date" class="form-input" id="dash-date" value="${S.sessionDate}"
+        onchange="S.sessionDate=this.value" style="margin-bottom:10px">
+      <button class="btn btn-primary" onclick="openSession(document.getElementById('dash-date').value)">סמן נוכחות →</button>
+    </div>
+
+    ${recentSessions.length ? `
+    <div class="section-title">מפגשים — לחץ לעריכה</div>
+    ${recentSessions.map(s=>{
+      const cnt=Object.values(s.attendance).filter(Boolean).length;
+      const pct=S.sailors.length?Math.round(cnt/S.sailors.length*100):0;
+      const color=pct>=70?"var(--green)":pct>=40?"var(--yellow)":"var(--red)";
+      return `<div class="session-item" onclick="openSession('${s.date}')">
+        <div>
+          <div style="font-weight:700;font-size:14px">📅 ${fmtLong(s.date)}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">לחץ לעדכון נוכחות</div>
+        </div>
+        <div style="text-align:left">
+          <div style="font-size:18px;font-weight:800;color:${color}">${cnt}/${S.sailors.length}</div>
+          <div style="font-size:10px;color:var(--muted)">${pct}%</div>
+        </div>
+      </div>`;
+    }).join("")}` : ""}
+
+    ${S.sailors.length&&S.sessions.length?`
+    <div class="section-title" style="margin-top:8px">ייצוא</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <button class="btn btn-excel" onclick="exportExcel()">📥 Excel</button>
+      <button class="btn btn-sheets" onclick="exportSheets()">📊 Sheets</button>
+    </div>`:""}
+  `;
+}
+
+function renderSailors() {
+  const lowAttend = S.sailors.filter(s=>{ const r=attendRate(s); return r!==null&&r<50; });
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="font-size:20px;font-weight:800">👥 חניכים</h2>
+      <button class="btn btn-primary btn-sm" onclick="S.editId=null;S.form={firstName:'',lastName:'',birthDate:'',joinDate:today(),shirtSize:'M',parentName:'',parentPhone:'',gender:'male',boat:'Optimist'};navigate('addSailor')">+ הוסף</button>
+    </div>
+    ${lowAttend.length?`<div class="card card-red" style="margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:6px">⚠️ נוכחות נמוכה</div>
+      ${lowAttend.map(s=>`<div style="font-size:13px;color:var(--muted)">${s.firstName} ${s.lastName} — ${attendRate(s)}%</div>`).join("")}
+    </div>`:""}
+    ${S.sailors.length===0?`<div style="text-align:center;padding:60px 0;color:var(--muted)">
+      <div style="font-size:48px;margin-bottom:12px">⛵</div><p>עוד אין חניכים</p>
+      <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="navigate('addSailor')">הוסף חניך</button>
+    </div>`:S.sailors.map(s=>{
+      const r=attendRate(s); const rc=rateColor(r);
+      return `<div class="sailor-card">
+        <div class="avatar avatar-${s.gender}">${s.gender==="male"?"👦":"👧"}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:15px">${esc(s.firstName)} ${esc(s.lastName)}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">
+            🚢 ${s.boat} · 👕 ${s.shirtSize}${s.joinDate?" · הצטרף "+fmtShort(s.joinDate):""}
+          </div>
+          ${s.parentPhone?`<div style="font-size:11px;color:var(--muted)">📞 ${esc(s.parentPhone)}</div>`:""}
+        </div>
+        <div class="sailor-right">
+          ${r!==null?`<div style="text-align:center"><div style="font-size:18px;font-weight:800;color:${rc}">${r}%</div><div style="font-size:10px;color:var(--muted)">נוכחות</div></div>`:""}
+          <button class="btn btn-ghost btn-sm" onclick="editSailor('${s.id}')">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteSailor('${s.id}')">מחק</button>
+        </div>
+      </div>`;
+    }).join("")}
+  `;
+}
+
+function renderAddSailor() {
+  const f = S.form;
+  const isEdit = !!S.editId;
+  return `
+    <button class="back-btn" onclick="S.editId=null;navigate('sailors')">← חזרה</button>
+    <h2 style="font-size:20px;font-weight:800;margin-bottom:20px">${isEdit?"✏️ עריכת חניך":"⛵ הוסף חניך"}</h2>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">שם פרטי *</label>
+        <input class="form-input" value="${esc(f.firstName)}" oninput="S.form.firstName=this.value" autocomplete="given-name" inputmode="text">
+      </div>
+      <div class="form-group">
+        <label class="form-label">שם משפחה *</label>
+        <input class="form-input" value="${esc(f.lastName)}" oninput="S.form.lastName=this.value" autocomplete="family-name" inputmode="text">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">מגדר</label>
+      <div class="toggle-row">
+        <button class="toggle-btn ${f.gender==="male"?"active":""}" data-gender="male" onclick="setGender('male')">👦 בן</button>
+        <button class="toggle-btn ${f.gender==="female"?"active":""}" data-gender="female" onclick="setGender('female')">👧 בת</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">סירה</label>
+      <select class="form-input" onchange="S.form.boat=this.value">
+        ${BOATS.map(b=>`<option ${f.boat===b?"selected":""}>${b}</option>`).join("")}
+      </select>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">תאריך לידה</label>
+        <input type="date" class="form-input" value="${esc(f.birthDate)}" onchange="S.form.birthDate=this.value">
+      </div>
+      <div class="form-group">
+        <label class="form-label">תאריך הצטרפות</label>
+        <input type="date" class="form-input" value="${esc(f.joinDate||today())}" onchange="S.form.joinDate=this.value">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">מידת חולצה</label>
+      <div class="size-row">
+        ${SIZES.map(sz=>`<button class="size-pill ${f.shirtSize===sz?"active":""}" data-size="${sz}" onclick="setSize('${sz}')">${sz}</button>`).join("")}
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">שם הורה</label>
+        <input class="form-input" value="${esc(f.parentName)}" oninput="S.form.parentName=this.value" autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">טלפון הורה</label>
+        <input type="tel" class="form-input" value="${esc(f.parentPhone)}" oninput="S.form.parentPhone=this.value" autocomplete="tel">
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="addSailor()">${isEdit?"💾 שמור שינויים":"⛵ הוסף חניך"}</button>
+  `;
+}
+
+function renderSession() {
+  if (!S.activeSession) return `<p>אין מפגש פתוח</p>`;
+  const sess = S.activeSession;
+  const totalPresent = Object.values(sess.attendance).filter(Boolean).length;
+  const allPresent = S.sailors.every(s=>sess.attendance[s.id]);
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <h2 style="font-size:18px;font-weight:800">✅ נוכחות</h2>
+        <div style="font-size:13px;color:var(--muted);margin-top:2px">${fmtLong(sess.date)}</div>
+      </div>
+      <span class="counter-pill" id="attend-counter">${totalPresent}/${S.sailors.length}</span>
+    </div>
+    ${S.sailors.length===0?`<div style="text-align:center;padding:40px;color:var(--muted)">אין חניכים רשומים</div>`:`
+    <button class="btn btn-ghost btn-sm" style="margin-bottom:12px;width:auto" onclick="toggleAll()">
+      ${allPresent?"בטל הכל ✗":"סמן הכל ✓"}
+    </button>
+    ${S.sailors.map(s=>{
+      const p=sess.attendance[s.id];
+      return `<div id="arow-${s.id}" class="attend-row ${p?"present":"absent"}" onclick="toggleAttendance('${s.id}')">
+        <div class="avatar avatar-${s.gender}" style="width:38px;height:38px;font-size:18px">${s.gender==="male"?"👦":"👧"}</div>
+        <div>
+          <div style="font-weight:700;font-size:15px">${esc(s.firstName)} ${esc(s.lastName)}</div>
+          <div style="font-size:11px;color:var(--muted)">${s.boat}</div>
+        </div>
+        <div id="acheck-${s.id}" class="attend-check ${p?"present":"absent"}">${p?"✓":"✗"}</div>
+      </div>`;
+    }).join("")}
+    <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--muted)">💾 נשמר אוטומטית</div>`}
+  `;
+}
+
+function renderHistory() {
+  const sorted = [...S.sessions].sort((a,b)=>a.date.localeCompare(b.date));
+  const sailorsSorted = [...S.sailors].map(s=>{
+    const joinDate = s.joinDate||"2000-01-01";
+    const rel = S.sessions.filter(sess=>sess.date>=joinDate);
+    const attended = rel.filter(sess=>sess.attendance[s.id]).length;
+    const missed = rel.length - attended;
+    return {...s, rate:attendRate(s), attended, missed, totalRelevant:rel.length};
+  }).sort((a,b)=>(a.rate??101)-(b.rate??101));
+
+  if (!S.sailors.length) return `
+    <h2 style="font-size:20px;font-weight:800;margin-bottom:20px">📊 היסטוריה</h2>
+    <div style="text-align:center;padding:60px 0;color:var(--muted)"><div style="font-size:48px">📊</div><p style="margin-top:12px">עוד אין חניכים</p></div>`;
+
+  if (!S.sessions.length) return `
+    <h2 style="font-size:20px;font-weight:800;margin-bottom:20px">📊 היסטוריה</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <button class="btn btn-excel" onclick="exportSailors()">📥 ייצוא חניכים</button>
+      <button class="btn btn-sheets" onclick="exportSailorsSheets()">📊 Google Sheets</button>
+    </div>
+    <div style="text-align:center;padding:40px 0;color:var(--muted)"><div style="font-size:40px">📅</div><p style="margin-top:12px">עוד לא נוספו מפגשים</p></div>`;
+
+  return `
+    <h2 style="font-size:20px;font-weight:800;margin-bottom:16px">📊 היסטוריה</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <button class="btn btn-excel" onclick="exportExcel()">📥 Excel</button>
+      <button class="btn btn-sheets" onclick="exportSheets()">📊 Sheets</button>
+    </div>
+
+    ${sailorsSorted.map(s=>{
+      const rc=rateColor(s.rate);
+      const joinDate=s.joinDate||"2000-01-01";
+      const dots=sorted.slice(-15).map(sess=>{
+        if (sess.date<joinDate) return `<div class="dot" style="background:#1e3a5f;opacity:0.5" title="לפני הצטרפות"></div>`;
+        return `<div class="dot" style="background:${sess.attendance[s.id]?"#34d399":"#ef4444"};opacity:${sess.attendance[s.id]?0.8:0.4}"></div>`;
+      }).join("");
+      return `<div class="card ${s.missed>=3?"card-red":""}">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span>${s.gender==="male"?"👦":"👧"}</span>
+            <div>
+              <div style="font-weight:700;font-size:14px">${esc(s.firstName)} ${esc(s.lastName)}</div>
+              ${s.joinDate?`<div style="font-size:10px;color:var(--muted)">הצטרף/ה ${fmtShort(s.joinDate)}</div>`:""}
+              ${s.missed>=3?`<span class="badge badge-warn">⚠️ ${s.missed} היעדרויות</span>`:""}
+            </div>
+          </div>
+          <div style="text-align:left">
+            <div style="font-size:20px;font-weight:800;color:${rc}">${s.rate!==null?s.rate+"%":"—"}</div>
+            <div style="font-size:10px;color:var(--muted)">${s.attended}/${s.totalRelevant}</div>
+          </div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${s.rate||0}%;background:${rc}"></div></div>
+        <div class="dots-row">${dots}</div>
+      </div>`;
+    }).join("")}
+
+    <div class="section-title" style="margin-top:16px">טבלה מלאה</div>
+    <div class="card table-scroll" style="padding:12px">
+      <table>
+        <thead><tr>
+          <th>שם</th>
+          ${sorted.map(s=>`<th>${fmtShort(s.date)}</th>`).join("")}
+          <th>%</th>
+        </tr></thead>
+        <tbody>
+          ${S.sailors.map(s=>{
+            const joinDate=s.joinDate||"2000-01-01";
+            return `<tr>
+              <td style="font-weight:600;color:var(--text)">${esc(s.firstName)} ${esc(s.lastName)}</td>
+              ${sorted.map(sess=>{
+                if (sess.date<joinDate) return `<td style="text-align:center;color:#1e3a5f">—</td>`;
+                return `<td style="text-align:center"><span style="color:${sess.attendance[s.id]?"#34d399":"#f87171"}">${sess.attendance[s.id]?"✓":"✗"}</span></td>`;
+              }).join("")}
+              <td style="font-weight:800;color:${rateColor(attendRate(s))}">${attendRate(s)!==null?attendRate(s)+"%":"—"}</td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ── Demo data ─────────────────────────────────────────────────
+const DEMO = [
+  {id:"d1",firstName:"יובל",lastName:"כהן",birthDate:"2012-03-15",joinDate:"2024-09-01",shirtSize:"M",parentName:"דנה כהן",parentPhone:"052-1234567",gender:"male",boat:"Optimist"},
+  {id:"d2",firstName:"נועה",lastName:"לוי",birthDate:"2011-07-22",joinDate:"2024-09-01",shirtSize:"S",parentName:"רון לוי",parentPhone:"054-2345678",gender:"female",boat:"RS Feva"},
+  {id:"d3",firstName:"עמית",lastName:"ברק",birthDate:"2013-01-08",joinDate:"2024-09-01",shirtSize:"L",parentName:"מיכל ברק",parentPhone:"050-3456789",gender:"male",boat:"Optimist"},
+  {id:"d4",firstName:"שירה",lastName:"אברהם",birthDate:"2012-09-30",joinDate:"2024-11-15",shirtSize:"S",parentName:"אבי אברהם",parentPhone:"053-4567890",gender:"female",boat:"RS Toura"},
+  {id:"d5",firstName:"תום",lastName:"מזרחי",birthDate:"2011-05-14",joinDate:"2024-09-01",shirtSize:"M",parentName:"לימור מזרחי",parentPhone:"058-5678901",gender:"male",boat:"RS Feva"},
+  {id:"d6",firstName:"מיה",lastName:"פרץ",birthDate:"2013-11-03",joinDate:"2025-01-20",shirtSize:"XS",parentName:"גיל פרץ",parentPhone:"052-6789012",gender:"female",boat:"Optimist"},
+];
+function makeDemoSessions() {
+  const dates=["2024-10-01","2024-10-08","2024-10-15","2024-10-22","2024-11-05","2024-11-19","2024-12-03","2024-12-17","2025-01-07","2025-01-21"];
+  const pat={d1:[1,1,1,1,1,1,1,1,1,1],d2:[1,0,1,1,0,1,1,1,1,0],d3:[1,1,0,1,1,0,1,1,0,1],d4:[0,0,0,0,1,1,0,1,1,1],d5:[1,0,0,1,0,0,1,0,0,1],d6:[0,0,0,0,0,0,0,0,1,1]};
+  return dates.map((date,i)=>{ const att={}; DEMO.forEach(s=>{ att[s.id]=!!pat[s.id][i]; }); return {id:"ds"+i,date,attendance:att}; });
+}
+
+// ── Init ──────────────────────────────────────────────────────
+load();
+if (!S.sailors.length) { S.sailors=DEMO; S.sessions=makeDemoSessions(); }
+S.form.joinDate = today();
+renderPage();
+
+if ('serviceWorker' in navigator) {
+  const sw=`self.addEventListener('install',e=>e.waitUntil(caches.open('sv1').then(c=>c.addAll(['/']))));self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))));`;
+  navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(()=>{});
+}
+</script>
+</body>
+</html>
