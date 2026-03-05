@@ -1153,7 +1153,7 @@ function rHours(){
         const origCoach=(A.allCoaches||[]).find(x=>x.id===g?.coach_id);
         const gName=g?esc(g.name):"?";
         const cName=origCoach?esc(origCoach.name):"";
-        dayNotice+=`<div style="font-size:11px;color:var(--blue-light);margin-top:4px;width:100%">🔄 החלפת את ${cName?`"${cName}" `:""}בפעילות "${gName}"</div>`;
+        dayNotice+=`<div style="font-size:11px;color:var(--blue-light);margin-top:4px;width:100%">🔄 החלפת את ${cName?`${cName} `:""}בפעילות ${gName}</div>`;
       });
     }
     if(replacedSess.length){
