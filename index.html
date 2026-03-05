@@ -974,7 +974,9 @@ function rSchedule(isAdmin=false){
       const dayD=days.find(d=>d.getDay()===dow);
       if(dayD){
         const ds=toISO(dayD);
-        if(map[ds]&&(!g.start_date||ds>=g.start_date))map[ds].push({g,coach,isMe});
+        const subSessDay=(A.subSessions||[]).find(s=>s.group_id===g.id&&s.date===ds);
+        const isMeOrSub=isMe||(!!subSessDay);
+        if(map[ds]&&(!g.start_date||ds>=g.start_date))map[ds].push({g,coach,isMe:isMeOrSub});
       }
     });
   });
@@ -1017,8 +1019,10 @@ function rSchedule(isAdmin=false){
         for(let d2=1;d2<=dim;d2++){
           const dt=new Date(myr,mmn,d2);
           const ds=toISO(dt);
+          const subSessDay=(A.subSessions||[]).find(s=>s.group_id===g.id&&s.date===ds);
+          const isMeOrSub=isMe||(!!subSessDay);
           if(dt.getDay()===dow&&(!g.start_date||ds>=g.start_date)){
-            if(!A.scheduleFilter||A.scheduleFilter==="all"||isMe||isAdmin)mmap[ds].push({g,coach,isMe});
+            if(!A.scheduleFilter||A.scheduleFilter==="all"||isMeOrSub||isAdmin)mmap[ds].push({g,coach,isMe:isMeOrSub});
           }
         }
       });
