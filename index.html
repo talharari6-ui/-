@@ -1294,6 +1294,8 @@ async function persistHours(date){
   const rec=A.workHours.find(h=>h.date===date);
   if(!rec)return;
   if(!rec.start_time&&!rec.end_time&&!rec.notes)return;
+  // Don't save if only one of start/end is filled
+  if((rec.start_time&&!rec.end_time)||(rec.end_time&&!rec.start_time))return;
   try{
     if(rec.id){
       await dbPa("work_hours",`id=eq.${rec.id}`,{start_time:rec.start_time||null,end_time:rec.end_time||null,notes:rec.notes||null});
