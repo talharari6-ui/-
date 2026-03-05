@@ -2368,55 +2368,41 @@ function rMyCancellations(){
 function exportSubstitutions(){
   const yr=A.adminYear||new Date().getFullYear();
   const mn=A.adminMonth!==undefined?A.adminMonth:new Date().getMonth();
-  const pad=n=>String(n).padStart(2,"0");
-  const mStr=`${yr}-${pad(mn+1)}`;
-  const mName=new Date(yr,mn,1).toLocaleString("he-IL",{month:"long",year:"numeric"});
-  const subSessions=(A.allSessions||[]).filter(s=>s.substitute_coach_id&&s.date&&s.date.startsWith(mStr));
-  subSessions.sort((a,b)=>a.date>b.date?1:-1);
-  const rows=[["תאריך","קבוצה","מדריך מקורי","מדריך מחליף"]];
-  subSessions.forEach(s=>{
+  const mnStr=String(mn+1).padStart(2,"0");
+  const mName=new Intl.DateTimeFormat("he-IL",{month:"long",year:"numeric"}).format(new Date(yr,mn,1));
+  const subs=(A.allSessions||[]).filter(s=>s.substitute_coach_id&&s.date&&s.date.startsWith(yr+"-"+mnStr)).sort((a,b)=>a.date.localeCompare(b.date));
+  const rows=[["תאריך","יום","קבוצה","מדריך מקורי","מדריך מחליף"]];
+  subs.forEach(s=>{
     const g=(A.allGroups||[]).find(x=>x.id===s.group_id);
     const orig=(A.allCoaches||[]).find(x=>x.id===g?.coach_id);
     const sub=(A.allCoaches||[]).find(x=>x.id===s.substitute_coach_id);
-    rows.push([s.date,g?.name||"",orig?.name||"",sub?.name||""]);
+    const dow=new Date(s.date+"T00:00:00").getDay();
+    rows.push([ff(s.date),"יום "+DL[dow],g?.name||"",orig?.name||"",sub?.name||""]);
   });
-  dlCSV(toCSV(rows),`החלפות_${mName}.csv`);
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download=`החלפות_${mName}.csv`;a.click();
   toast("📥 מוריד...");
 }
 
 function rAdminSubstitutions(){
   const yr=A.adminYear||new Date().getFullYear();
   const mn=A.adminMonth!==undefined?A.adminMonth:new Date().getMonth();
-  const mName=new Date(yr,mn,1).toLocaleString("he-IL",{month:"long",year:"numeric"});
-  const pad=n=>String(n).padStart(2,"0");
-  const mStr=`${yr}-${pad(mn+1)}`;
-  const subSessions=(A.allSessions||[]).filter(s=>s.substitute_coach_id&&s.date&&s.date.startsWith(mStr));
-  subSessions.sort((a,b)=>a.date>b.date?1:-1);
-
   const prevMn=mn===0?11:mn-1; const prevYr=mn===0?yr-1:yr;
   const nextMn=mn===11?0:mn+1; const nextYr=mn===11?yr+1:yr;
+  const mnStr=String(mn+1).padStart(2,"0");
+  const subs=(A.allSessions||[]).filter(s=>s.substitute_coach_id&&s.date&&s.date.startsWith(yr+"-"+mnStr)).sort((a,b)=>a.date.localeCompare(b.date));
+  const mName=new Intl.DateTimeFormat("he-IL",{month:"long",year:"numeric"}).format(new Date(yr,mn,1));
 
-  const tdS="padding:11px 16px;font-size:13px;border-bottom:1px solid var(--border);font-weight:400;color:var(--text)";
-  const tableRows=subSessions.length===0
-    ?`<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:40px">🔄</div><p>אין החלפות מתועדות לחודש זה</p></td></tr>`
-    :subSessions.map(s=>{
-      const g=(A.allGroups||[]).find(x=>x.id===s.group_id);
-      const origCoach=(A.allCoaches||[]).find(x=>x.id===g?.coach_id);
-      const subCoach=(A.allCoaches||[]).find(x=>x.id===s.substitute_coach_id);
-      const d=new Date(s.date+"T12:00:00");
-      const dayStr=d.toLocaleDateString("he-IL",{weekday:"short",day:"numeric",month:"numeric"});
-      return `<tr>
-        <td style="${tdS};color:#a78bfa">${esc(subCoach?.name||"")}</td>
-        <td style="${tdS}">${esc(origCoach?.name||"")}</td>
-        <td style="${tdS}">${esc(g?.name||"")}</td>
-        <td style="${tdS};color:var(--muted)">${dayStr}</td>
-      </tr>`;
-    }).join("");
+  const byDate={};
+  subs.forEach(s=>{if(!byDate[s.date])byDate[s.date]=[];byDate[s.date].push(s);});
+  const dates=Object.keys(byDate).sort();
 
-  return `<div style="padding:16px;max-width:800px;margin:0 auto">
+  return`
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
       <button class="bbtn" onclick="nav('admin-overview')">← חזרה</button>
-      <h2 style="font-size:18px;font-weight:800;flex:1;margin:0">🔄 החלפות — ${mName}</h2>
+      <h2 style="font-size:18px;font-weight:800;flex:1">🔄 החלפות — ${mName}</h2>
       <button class="btn btn-ex btn-sm" onclick="exportSubstitutions()">📥 Excel</button>
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
@@ -2424,20 +2410,37 @@ function rAdminSubstitutions(){
       <span style="flex:1;text-align:center;font-weight:700">${mName}</span>
       <button class="btn btn-g btn-sm" onclick="A.adminMonth=${nextMn};A.adminYear=${nextYr};renderPage()">←</button>
     </div>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden">
-      <table style="width:100%;border-collapse:collapse;table-layout:fixed">
-        <thead>
-          <tr style="border-bottom:2px solid var(--border)">
-            <th style="padding:10px 16px;text-align:right;font-size:13px;color:#a78bfa;font-weight:400;width:25%">מדריך מחליף</th>
-            <th style="padding:10px 16px;text-align:right;font-size:13px;color:var(--muted);font-weight:400;width:25%">מדריך מקורי</th>
-            <th style="padding:10px 16px;text-align:right;font-size:13px;color:var(--muted);font-weight:400;width:25%">קבוצה</th>
-            <th style="padding:10px 16px;text-align:right;font-size:13px;color:var(--muted);font-weight:400;width:25%">תאריך</th>
-          </tr>
-        </thead>
-        <tbody>${tableRows}</tbody>
-      </table>
-    </div>
-  </div>`;
+    ${subs.length===0
+      ?`<div style="text-align:center;padding:60px 0;color:var(--muted)"><div style="font-size:48px">🔄</div><p>אין החלפות לחודש זה</p></div>`
+      :dates.map(date=>{
+        const dayRows=byDate[date];
+        const dow=new Date(date+"T00:00:00").getDay();
+        return`<div style="margin-bottom:14px">
+          <div style="font-size:13px;font-weight:800;color:var(--blue-light);margin-bottom:6px;padding:0 2px">
+            יום ${DL[dow]} · ${ff(date)}
+          </div>
+          <div class="card" style="padding:0;overflow:hidden">
+            ${dayRows.map((s,i)=>{
+              const g=(A.allGroups||[]).find(x=>x.id===s.group_id);
+              const orig=(A.allCoaches||[]).find(x=>x.id===g?.coach_id);
+              const sub=(A.allCoaches||[]).find(x=>x.id===s.substitute_coach_id);
+              return`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;${i>0?"border-top:1px solid var(--border)":""}">
+                <div style="width:3px;height:36px;border-radius:2px;background:${g?.color||"#888"};flex-shrink:0"></div>
+                <div style="flex:1">
+                  <div style="font-weight:700;font-size:13px;color:${g?.color||"var(--text)"}">
+                    ${esc(g?.name||"")}
+                  </div>
+                  <div style="font-size:11px;color:var(--muted)">${esc(orig?.name||"")}</div>
+                </div>
+                <div style="font-size:13px;color:#a78bfa;font-weight:600">
+                  🔄 ${esc(sub?.name||"")}
+                </div>
+              </div>`;
+            }).join("")}
+          </div>
+        </div>`;
+      }).join("")}
+  `;
 }
 
 
