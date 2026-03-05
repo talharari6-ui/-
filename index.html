@@ -799,6 +799,14 @@ async function saveHours(){
   const f=A.hForm;
   if(!f.date||!f.start_time||!f.end_time){toast("⚠️ נא למלא תאריך ושעות");return;}
   if(f.start_time>=f.end_time){toast("⚠️ שעת יציאה חייבת להיות אחרי כניסה");return;}
+  // Check if coach cancelled a session on this date
+  const myGroupIds=new Set((A.groups||[]).filter(g=>g.coach_id===A.coach?.id).map(g=>g.id));
+  const cancelledThatDay=(A.sessions||[]).filter(s=>s.date===f.date&&s.cancelled&&myGroupIds.has(s.group_id));
+  if(cancelledThatDay.length){
+    const groupNames=cancelledThatDay.map(s=>{const g=(A.groups||[]).find(x=>x.id===s.group_id);return g?g.name:"";}).filter(Boolean).join(", ");
+    const proceed=confirm("⚠️ שים לב — הפעילות \""+groupNames+"\" באותו יום נדחתה.\nהאם למלא שעות בכל זאת?");
+    if(!proceed)return;
+  }
   try{
     if(A.editHId){
       await dbPa("work_hours",`id=eq.${A.editHId}`,{date:f.date,start_time:f.start_time,end_time:f.end_time,notes:f.notes||null});
@@ -1106,6 +1114,20 @@ function rHours(){
     const isFuture=dateStr>todayStr;
     const rec=A.workHours.find(h=>h.date===dateStr);
     const hid="hr-"+dateStr;
+    // Check if coach has a cancelled session or substitute role that day
+    const myGIds=new Set((A.groups||[]).filter(g=>g.coach_id===A.coach?.id).map(g=>g.id));
+    const mySessToday=(A.sessions||[]).filter(s=>s.date===dateStr&&myGIds.has(s.group_id));
+    const cancelledSess=mySessToday.filter(s=>s.cancelled);
+    const subSess=(A.sessions||[]).filter(s=>s.date===dateStr&&s.substitute_coach_id===A.coach?.id);
+    let dayNotice="";
+    if(cancelledSess.length){
+      const names=cancelledSess.map(s=>{const g=(A.groups||[]).find(x=>x.id===s.group_id);return g?esc(g.name):"";}).filter(Boolean).join(", ");
+      dayNotice+=`<div style="font-size:11px;color:#f59e0b;margin-top:4px;width:100%">⚠️ הפעילות "${names}" נדחתה</div>`;
+    }
+    if(subSess.length){
+      const subNames=subSess.map(s=>{const g=(A.allGroups||A.groups||[]).find(x=>x.id===s.group_id);return g?esc(g.name):"";}).filter(Boolean).join(", ");
+      dayNotice+=`<div style="font-size:11px;color:var(--blue-light);margin-top:4px;width:100%">🔄 החלפת את הפעילות "${subNames}"</div>`;
+    }
     
     rows+=`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
       <div style="min-width:52px;text-align:right">
@@ -1135,6 +1157,7 @@ function rHours(){
         ${rec&&(rec.start_time||rec.end_time||rec.notes)?`<button onclick="clearHours('${dateStr}')" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:8px;padding:6px 8px;font-size:12px;cursor:pointer">🗑️</button>`:""}
         <span id="sv-${dateStr}" style="font-size:10px;color:var(--green);font-weight:700;opacity:0;transition:opacity 0.3s;min-width:40px">✓ נשמר</span>
       </div>
+      ${dayNotice}
     </div>`;
   }
 
