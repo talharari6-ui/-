@@ -182,11 +182,11 @@ async function sb(path,method="GET",body=null){
   if(!res.ok){const e=await res.text();throw new Error(e);}
   const t=await res.text();return t?JSON.parse(t):null;
 }
-const dbG=(t,q="",o="created_at.asc")=>{const noOrder=["attendance","group_sailors"];const ord=(noOrder.includes(t)&&o==="created_at.asc")?"":o;return sb(t+"?"+q+(ord?"&order="+ord:""));};
+const dbG=(t,q="",o="created_at.asc")=>sb(t+"?"+q+(o?"&order="+o:""));
 const dbP=(t,b)=>sb(t,"POST",b);
 const sbUpsert=async(t,b)=>{
   const h={"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates,return=representation"};
-  const res=await fetch(SUPA_URL+"/"+t,{method:"POST",headers:h,body:JSON.stringify(b)});
+  const res=await fetch(SUPA_URL+"/rest/v1/"+t,{method:"POST",headers:h,body:JSON.stringify(b)});
   if(!res.ok){const e=await res.text();throw new Error(e);}
   return res.json();
 };
