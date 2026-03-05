@@ -699,13 +699,17 @@ async function substituteSession(date, groupId){
           // Toggle off
           if(sess){await dbPa("sessions",`id=eq.${sess.id}`,{substitute_coach_id:null});sess.substitute_coach_id=null;}
           A.subSessions=(A.subSessions||[]).filter(s=>s.id!==sess?.id);
-          renderPage();toast("✅ הוסרת מרשימת המחליפים");
+          // Update button visually without full re-render
+          document.querySelectorAll('[data-sub-gid="'+groupId+'"][data-sub-date="'+date+'"]').forEach(b=>{b.style.background="";b.style.color="#a78bfa";b.textContent="🔄 החלפה";});
+          toast("✅ הוסרת מרשימת המחליפים");
         } else {
-          if(!sess){const res=await dbP("sessions",{group_id:groupId,date,substitute_coach_id:me.id,coach_note:""});sess=res[0];A.sessions.push(sess);}
+          if(!sess){const res=await dbP("sessions",{group_id:groupId,date,substitute_coach_id:me.id});sess=res[0];A.sessions.push(sess);}
           else{await dbPa("sessions",`id=eq.${sess.id}`,{substitute_coach_id:me.id});sess.substitute_coach_id=me.id;}
           A.subSessions=A.subSessions||[];
           if(!A.subSessions.find(s=>s.id===sess.id))A.subSessions.push(sess);
-          renderPage();toast("🔄 סומנת כמחליף");
+          // Update button visually without full re-render
+          document.querySelectorAll('[data-sub-gid="'+groupId+'"][data-sub-date="'+date+'"]').forEach(b=>{b.style.background="rgba(167,139,250,0.2)";b.style.color="#a78bfa";b.textContent="✓ מחליף";});
+          toast("🔄 סומנת כמחליף");
         }
       }catch(e){toast("❌ "+e.message);}
     }
@@ -1134,7 +1138,7 @@ function rSchedule(isAdmin=false){
             <div style="display:flex;border-top:1px solid var(--border)">
               <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:var(--green);font-size:12px;font-weight:700;cursor:pointer" onclick="openSession('${ds}','${g.id}')" ${(function(){var _sx=A.sessions.find(x=>x.date===ds&&x.group_id===g.id);return _sx&&_sx.cancelled?"disabled style='opacity:0.35;cursor:not-allowed;pointer-events:none'":""})()}>✅ נוכחות</button>
               <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:#f59e0b;font-size:12px;font-weight:700;cursor:pointer" onclick="quickCancel('${ds}','${g.id}')">⚠️ דחייה</button>
-              <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:#a78bfa;font-size:12px;font-weight:700;cursor:pointer" onclick="substituteSession('${ds}','${g.id}')">🔄 החלפה</button>
+              <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:#a78bfa;font-size:12px;font-weight:700;cursor:pointer" data-sub-gid="${g.id}" data-sub-date="${ds}" onclick="substituteSession('${ds}','${g.id}')">🔄 החלפה</button>
               <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:var(--blue-light);font-size:12px;font-weight:700;cursor:pointer" onclick="A.activeGroupId='${g.id}';A.activeDate='${ds}';A.subView='assignSailors';renderPage()">👥 הוסף/הסר חניך</button>
               <button style="flex:1;padding:9px 4px;background:none;border:none;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer" onclick="A.activeGroupId='${g.id}';A.activeDate='${ds}';A.subView='groupDetail';renderPage()">📋 פרטי קבוצה</button>
             </div>
@@ -1551,7 +1555,7 @@ function rGroupDetail(){
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
       ${(()=>{const _s=A.sessions.find(x=>x.date===(A.activeDate||td())&&x.group_id===g.id);const _cancelled=_s&&_s.cancelled;return`<button class="btn btn-sm" style="background:${_cancelled?"rgba(34,197,94,0.15)":"rgba(245,158,11,0.15)"};border:1px solid ${_cancelled?"rgba(34,197,94,0.3)":"rgba(245,158,11,0.3)"};color:${_cancelled?"var(--green)":"#f59e0b"}" onclick="quickCancelFromDetail('${g.id}',A.activeDate||td())">${_cancelled?"✅ בטל דחייה":"⚠️ דחה פעילות"}</button>`;})()}
-      <button class="btn btn-g btn-sm" onclick="substituteSession(A.activeDate||td(),'${g.id}')">🔄 החלפה</button>
+      <button class="btn btn-g btn-sm" data-sub-gid="${g.id}" data-sub-date="${A.activeDate||td()}" onclick="substituteSession(A.activeDate||td(),'${g.id}')">🔄 החלפה</button>
     </div>
     <button class="btn btn-g btn-sm" style="margin-bottom:14px" onclick="editGroup('${g.id}')">✏️ ערוך פרטי קבוצה</button>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
