@@ -381,21 +381,21 @@ async function pollSubstitutes(){
       myGIds.length?dbG("sessions",`group_id=in.(${myGIds.join(",")})`):[],
       A.dbCoachId?dbG("sessions",`substitute_coach_id=eq.${A.dbCoachId}`):[]
     ]);
-    // Check if anything changed before re-rendering
-    let changed=false;
+    // Snapshot before update
+    const prevSnap=JSON.stringify((A.sessions||[]).map(s=>({id:s.id,sub:s.substitute_coach_id,cancelled:s.cancelled})));
+    const prevSubSnap=JSON.stringify((A.subSessions||[]).map(s=>s.id).sort());
+    // Apply updates
     ownSess.forEach(s=>{
       const existing=A.sessions.find(x=>x.id===s.id);
-      if(existing){
-        if(existing.substitute_coach_id!==s.substitute_coach_id||existing.cancelled!==s.cancelled){changed=true;}
-        Object.assign(existing,s);
-      } else {A.sessions.push(s);changed=true;}
+      if(existing) Object.assign(existing,s);
+      else A.sessions.push(s);
     });
-    const prevSubIds=JSON.stringify((A.subSessions||[]).map(s=>s.id).sort());
-    const newSubIds=JSON.stringify(subSess.map(s=>s.id).sort());
-    if(prevSubIds!==newSubIds) changed=true;
     A.subSessions=subSess;
-    subSess.forEach(s=>{if(!A.sessions.find(x=>x.id===s.id)){A.sessions.push(s);}});
-    if(changed) renderPage();
+    subSess.forEach(s=>{if(!A.sessions.find(x=>x.id===s.id))A.sessions.push(s);});
+    // Compare after update
+    const newSnap=JSON.stringify((A.sessions||[]).map(s=>({id:s.id,sub:s.substitute_coach_id,cancelled:s.cancelled})));
+    const newSubSnap=JSON.stringify((A.subSessions||[]).map(s=>s.id).sort());
+    if(prevSnap!==newSnap||prevSubSnap!==newSubSnap) renderPage();
   }catch(e){console.log("poll error",e);}
 }
 function startSubPolling(){
