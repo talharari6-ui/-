@@ -686,7 +686,21 @@ async function quickCancelFromDetail(groupId, date){
 async function substituteSession(date, groupId){
   A._subDate=date; A._subGroupId=groupId;
   const sess=A.sessions.find(s=>s.group_id===groupId&&s.date===date);
-  const coaches=(A.allCoaches||[]).filter(x=>x.id!==A.coach?.id&&!x.is_admin);
+  const myGroupIds=new Set((A.groups||[]).filter(g=>g.coach_id===A.coach?.id).map(g=>g.id));
+  const isMyGroup=myGroupIds.has(groupId);
+  // Admin sees all non-admin coaches; coach sees everyone except themselves and admins
+  // But coach CAN mark themselves as substitute for OTHER coaches' groups
+  let coaches;
+  if(A.isAdmin){
+    coaches=(A.allCoaches||[]).filter(x=>!x.is_admin);
+  } else if(!isMyGroup){
+    // This is someone else's group - show self first + others
+    const me=(A.allCoaches||[]).find(x=>x.id===A.dbCoachId||(x.login_code&&x.login_code===A.coach?.id));
+    const others=(A.allCoaches||[]).filter(x=>x.id!==me?.id&&!x.is_admin);
+    coaches=me?[me,...others]:others;
+  } else {
+    coaches=(A.allCoaches||[]).filter(x=>x.id!==A.coach?.id&&!x.is_admin);
+  }
   const list=document.getElementById("sub-list");
   const clearBtn=document.getElementById("sub-clear-btn");
   if(!list)return;
@@ -717,6 +731,11 @@ async function selectSubstitute(coachId){
     } else {
       await dbPa("sessions",`id=eq.${sess.id}`,{substitute_coach_id:coachId});
       sess.substitute_coach_id=coachId;
+    }
+    // If current coach marked themselves - add to subSessions for immediate 'mine' filter update
+    if(sess&&(coachId===A.dbCoachId)){
+      A.subSessions=A.subSessions||[];
+      if(!A.subSessions.find(s=>s.id===sess.id)) A.subSessions.push(sess);
     }
     closeSubModal();renderPage();
     toast("🔄 "+sub?.name+" הוגדר כמחליף");
