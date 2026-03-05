@@ -2396,21 +2396,21 @@ function rAdminSubstitutions(){
   const prevMn=mn===0?11:mn-1; const prevYr=mn===0?yr-1:yr;
   const nextMn=mn===11?0:mn+1; const nextYr=mn===11?yr+1:yr;
 
-  const ROW_STYLE="display:grid;grid-template-columns:1fr 1fr 1fr 130px;align-items:center;padding:11px 16px;border-bottom:1px solid var(--border);direction:rtl;text-align:right";
+  const tdS="padding:11px 16px;font-size:13px;border-bottom:1px solid var(--border);white-space:nowrap";
   const tableRows=subSessions.length===0
-    ?`<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:48px">🔄</div><p>אין החלפות מתועדות לחודש זה</p></div>`
+    ?`<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:40px">🔄</div><p>אין החלפות מתועדות לחודש זה</p></td></tr>`
     :subSessions.map(s=>{
       const g=(A.allGroups||[]).find(x=>x.id===s.group_id);
       const origCoach=(A.allCoaches||[]).find(x=>x.id===g?.coach_id);
       const subCoach=(A.allCoaches||[]).find(x=>x.id===s.substitute_coach_id);
       const d=new Date(s.date+"T12:00:00");
       const dayStr=d.toLocaleDateString("he-IL",{weekday:"short",day:"numeric",month:"numeric"});
-      return `<div style="${ROW_STYLE}">
-        <div style="font-size:13px;color:#a78bfa">${esc(subCoach?.name||"")}</div>
-        <div style="font-size:13px;color:var(--text)">${esc(origCoach?.name||"")}</div>
-        <div style="font-size:13px;color:var(--text)">${esc(g?.name||"")}</div>
-        <div style="font-size:13px;color:var(--muted)">${dayStr}</div>
-      </div>`;
+      return `<tr>
+        <td style="${tdS};color:var(--muted)">${dayStr}</td>
+        <td style="${tdS}">${esc(g?.name||"")}</td>
+        <td style="${tdS}">${esc(origCoach?.name||"")}</td>
+        <td style="${tdS};color:#a78bfa">${esc(subCoach?.name||"")}</td>
+      </tr>`;
     }).join("");
 
   return `<div style="padding:16px;max-width:800px;margin:0 auto">
@@ -2425,10 +2425,17 @@ function rAdminSubstitutions(){
       <button class="btn btn-g btn-sm" onclick="A.adminMonth=${nextMn};A.adminYear=${nextYr};renderPage()">←</button>
     </div>
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden">
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 130px;padding:9px 16px;border-bottom:2px solid var(--border);font-size:12px;color:var(--muted);font-weight:700;direction:rtl;text-align:right">
-        <div style="color:#a78bfa">מדריך מחליף</div><div>מדריך מקורי</div><div>קבוצה</div><div>תאריך</div>
-      </div>
-      ${tableRows}
+      <table style="width:100%;border-collapse:collapse;direction:rtl">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border);font-size:12px;color:var(--muted);font-weight:700">
+            <th style="padding:10px 16px;text-align:right;font-weight:700">תאריך</th>
+            <th style="padding:10px 16px;text-align:right;font-weight:700">קבוצה</th>
+            <th style="padding:10px 16px;text-align:right;font-weight:700">מדריך מקורי</th>
+            <th style="padding:10px 16px;text-align:right;font-weight:700;color:#a78bfa">מדריך מחליף</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
     </div>
   </div>`;
 }
