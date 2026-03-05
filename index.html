@@ -1189,7 +1189,7 @@ function rHours(){
           onchange="autoSaveHours('${dateStr}','notes',this.value)" oninput="autoSaveHours('${dateStr}','notes',this.value)"
           id="nt-${dateStr}">
         <span id="cpybtn-${dateStr}" style="display:flex;gap:4px">${rec&&rec.start_time&&rec.end_time?`<button onclick="showCopyModal('${dateStr}')" style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:var(--blue-light);border-radius:8px;padding:6px 8px;font-size:12px;cursor:pointer">📋</button>`:""}</span>
-        ${rec&&(rec.start_time||rec.end_time||rec.notes)?`<button onclick="clearHours('${dateStr}')" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:8px;padding:6px 8px;font-size:12px;cursor:pointer">🗑️</button>`:""}
+        ${rec&&(rec.start_time||rec.end_time||rec.notes)?`<button id="clrbtn-${dateStr}" onclick="clearHours('${dateStr}')" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:8px;padding:6px 8px;font-size:12px;cursor:pointer">🗑️</button>`:""}
         <span id="sv-${dateStr}" style="font-size:10px;color:var(--green);font-weight:700;opacity:0;transition:opacity 0.3s;min-width:40px">✓ נשמר</span>
       </div>
       ${dayNotice}
@@ -1281,6 +1281,7 @@ async function clearHours(date){
     if(st)st.value="";if(et)et.value="";if(nt)nt.value="";
     const sp=document.getElementById("sv-"+date);if(sp)sp.textContent="";
     const cpyEl=document.getElementById("cpybtn-"+date);if(cpyEl)cpyEl.innerHTML="";
+    const clrEl=document.getElementById("clrbtn-"+date);if(clrEl)clrEl.style.display="none";
     // update totals
     autoSaveHours(date,"start_time","");
     toast("🗑️ שעות נוקו");
