@@ -2396,7 +2396,7 @@ function rAdminSubstitutions(){
   const prevMn=mn===0?11:mn-1; const prevYr=mn===0?yr-1:yr;
   const nextMn=mn===11?0:mn+1; const nextYr=mn===11?yr+1:yr;
 
-  const tdS="padding:11px 16px;font-size:13px;border-bottom:1px solid var(--border);white-space:nowrap";
+  const tdS="padding:11px 16px;font-size:13px;border-bottom:1px solid var(--border);font-weight:400;color:var(--text)";
   const tableRows=subSessions.length===0
     ?`<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:40px">🔄</div><p>אין החלפות מתועדות לחודש זה</p></td></tr>`
     :subSessions.map(s=>{
@@ -2425,13 +2425,13 @@ function rAdminSubstitutions(){
       <button class="btn btn-g btn-sm" onclick="A.adminMonth=${nextMn};A.adminYear=${nextYr};renderPage()">←</button>
     </div>
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden">
-      <table style="width:100%;border-collapse:collapse;direction:rtl">
+      <table style="width:100%;border-collapse:collapse;direction:rtl;table-layout:fixed">
         <thead>
-          <tr style="border-bottom:2px solid var(--border);font-size:12px;color:var(--muted);font-weight:700">
-            <th style="padding:10px 16px;text-align:right;font-weight:700">תאריך</th>
-            <th style="padding:10px 16px;text-align:right;font-weight:700">קבוצה</th>
-            <th style="padding:10px 16px;text-align:right;font-weight:700">מדריך מקורי</th>
-            <th style="padding:10px 16px;text-align:right;font-weight:700;color:#a78bfa">מדריך מחליף</th>
+          <tr style="border-bottom:2px solid var(--border)">
+            <th style="padding:10px 16px;text-align:right;font-size:13px;color:var(--muted);font-weight:400;width:25%">תאריך</th>
+            <th style="padding:10px 16px;text-align:right;font-size:13px;color:var(--muted);font-weight:400;width:25%">קבוצה</th>
+            <th style="padding:10px 16px;text-align:right;font-size:13px;color:var(--muted);font-weight:400;width:25%">מדריך מקורי</th>
+            <th style="padding:10px 16px;text-align:right;font-size:13px;color:#a78bfa;font-weight:400;width:25%">מדריך מחליף</th>
           </tr>
         </thead>
         <tbody>${tableRows}</tbody>
