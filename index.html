@@ -885,6 +885,7 @@ function renderPage(){
   else if(A.view==="admin-hours")setC(rAdminHours());
   else if(A.view==="admin-schedule")setC(rSchedule(true));
   else if(A.view==="admin-absences")setC(rAdminAbsences());
+  else if(A.view==="admin-cancellations")setC(rAdminCancellations());
   else if(A.view==="admin-settings")setC(rAdminSettings());
 }
 
@@ -1763,7 +1764,7 @@ function rAdminMonthly(){
     </div>
     <div class="sgrid" style="margin-bottom:12px">
       <div class="sc"><div class="si">📅</div><div class="sv" style="color:var(--purple)">${monthSess.length}</div><div class="sl">פעילויות</div></div>
-      <div class="sc" style="cursor:pointer" onclick="exportMonthlyCancellations(${yr},${mn})"><div class="si">⚠️</div><div class="sv" style="color:var(--yellow)">${monthCanc.length}</div><div class="sl">דחיות 📥</div></div>
+      <div class="sc" style="cursor:pointer" onclick="nav('admin-cancellations')" style="cursor:pointer"><div class="si">⚠️</div><div class="sv" style="color:var(--yellow)">${monthCanc.length}</div><div class="sl">דחיות</div></div>
       <div class="sc" style="cursor:pointer" onclick="nav('admin-absences')"><div class="si">🚫</div><div class="sv" style="color:#ef4444">${(()=>{let tot=0;const mnSess=A.allSessions.filter(s=>!s.cancelled);mnSess.forEach(s=>{const att=A.allAttendance[s.id]||{};tot+=Object.values(att).filter(v=>v===false).length;});return tot;})()}</div><div class="sl">חיסורים</div></div>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:14px">
@@ -1950,6 +1951,77 @@ async function exportAbsencesXlsx(){
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
   a.download=`חיסורים_${mName}.csv`;
+  a.click();
+  toast("📥 מוריד...");
+}
+
+
+function rAdminCancellations(){
+  const yr=A.adminYear||new Date().getFullYear();
+  const mn=A.adminMonth!==undefined?A.adminMonth:new Date().getMonth();
+  const mnStr=String(mn+1).padStart(2,"0");
+  const canc=A.allSessions.filter(s=>s.cancelled&&s.date.startsWith(yr+"-"+mnStr)).sort((a,b)=>a.date.localeCompare(b.date));
+  const mName=new Intl.DateTimeFormat("he-IL",{month:"long",year:"numeric"}).format(new Date(yr,mn,1));
+
+  // group by date
+  const byDate={};
+  canc.forEach(s=>{if(!byDate[s.date])byDate[s.date]=[];byDate[s.date].push(s);});
+  const dates=Object.keys(byDate).sort();
+
+  return`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+      <button class="bbtn" onclick="nav('admin-overview')">← חזרה</button>
+      <h2 style="font-size:18px;font-weight:800;flex:1">⚠️ דחיות — ${mName}</h2>
+      <button class="btn btn-ex btn-sm" onclick="exportCancellationsXlsx()">📥 Excel</button>
+    </div>
+    ${canc.length===0
+      ?`<div style="text-align:center;padding:60px 0;color:var(--muted)"><div style="font-size:48px">✅</div><p>אין דחיות לחודש זה</p></div>`
+      :dates.map(date=>{
+        const dayRows=byDate[date];
+        const dow=new Date(date+"T00:00:00").getDay();
+        return`<div style="margin-bottom:14px">
+          <div style="font-size:13px;font-weight:800;color:var(--blue-light);margin-bottom:6px;padding:0 2px">
+            יום ${DL[dow]} · ${ff(date)}
+          </div>
+          <div class="card" style="padding:0;overflow:hidden">
+            ${dayRows.map((s,i)=>{
+              const g=A.allGroups.find(x=>x.id===s.group_id);
+              const coach=A.allCoaches.find(x=>x.id===g?.coach_id);
+              return`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;${i>0?"border-top:1px solid var(--border)":""}">
+                <div style="width:3px;height:36px;border-radius:2px;background:${g?.color||"#888"};flex-shrink:0"></div>
+                <div style="flex:1">
+                  <div style="font-weight:700;font-size:13px;color:${g?.color||"var(--text)"}">${esc(g?.name||"")}</div>
+                  <div style="font-size:11px;color:var(--muted)">${esc(coach?.name||"")}</div>
+                </div>
+                <div style="font-size:12px;color:${s.cancel_reason?"#f59e0b":"var(--muted)"};text-align:left;max-width:130px;word-break:break-word">
+                  ${s.cancel_reason?esc(s.cancel_reason):"ללא סיבה"}
+                </div>
+              </div>`;
+            }).join("")}
+          </div>
+        </div>`;
+      }).join("")}
+  `;
+}
+
+async function exportCancellationsXlsx(){
+  const yr=A.adminYear||new Date().getFullYear();
+  const mn=A.adminMonth!==undefined?A.adminMonth:new Date().getMonth();
+  const mnStr=String(mn+1).padStart(2,"0");
+  const canc=A.allSessions.filter(s=>s.cancelled&&s.date.startsWith(yr+"-"+mnStr)).sort((a,b)=>a.date.localeCompare(b.date));
+  const mName=new Intl.DateTimeFormat("he-IL",{month:"long",year:"numeric"}).format(new Date(yr,mn,1));
+  const rows=[["תאריך","יום","קבוצה","מדריך","סיבה"]];
+  canc.forEach(s=>{
+    const g=A.allGroups.find(x=>x.id===s.group_id);
+    const coach=A.allCoaches.find(x=>x.id===g?.coach_id);
+    const dow=new Date(s.date+"T00:00:00").getDay();
+    rows.push([ff(s.date),"יום "+DL[dow],g?.name||"",coach?.name||"",s.cancel_reason||""]);
+  });
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`דחיות_${mName}.csv`;
   a.click();
   toast("📥 מוריד...");
 }
