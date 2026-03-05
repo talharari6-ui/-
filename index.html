@@ -1148,8 +1148,13 @@ function rHours(){
     }
     if(subSess.length){
       const allG=A.allGroups&&A.allGroups.length?A.allGroups:A.groups||[];
-      const subNames=subSess.map(s=>{const g=allG.find(x=>x.id===s.group_id);return g?esc(g.name):"";}).filter(Boolean).join(", ");
-      dayNotice+=`<div style="font-size:11px;color:var(--blue-light);margin-top:4px;width:100%">🔄 החלפת את הפעילות "${subNames||"?"}"</div>`;
+      subSess.forEach(s=>{
+        const g=allG.find(x=>x.id===s.group_id);
+        const origCoach=(A.allCoaches||[]).find(x=>x.id===g?.coach_id);
+        const gName=g?esc(g.name):"?";
+        const cName=origCoach?esc(origCoach.name):"";
+        dayNotice+=`<div style="font-size:11px;color:var(--blue-light);margin-top:4px;width:100%">🔄 החלפת את ${cName?`"${cName}" `:""}בפעילות "${gName}"</div>`;
+      });
     }
     if(replacedSess.length){
       replacedSess.forEach(s=>{
