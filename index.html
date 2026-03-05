@@ -1174,13 +1174,13 @@ function rHours(){
         <input type="time" style="background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;font-size:14px;width:90px;color-scheme:dark;" 
           value="${rec?rec.start_time:""}" 
           placeholder="כניסה"
-          onchange="autoSaveHours('${dateStr}','start_time',this.value)"
+          onchange="autoSaveHours('${dateStr}','start_time',this.value)" onblur="fixTimeInput(this,'${dateStr}','start_time')"
           id="st-${dateStr}">
         <span style="color:var(--muted);font-size:12px">–</span>
         <input type="time" style="background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;font-size:14px;width:90px;color-scheme:dark;" 
           value="${rec?rec.end_time:""}" 
           placeholder="יציאה"
-          onchange="autoSaveHours('${dateStr}','end_time',this.value)"
+          onchange="autoSaveHours('${dateStr}','end_time',this.value)" onblur="fixTimeInput(this,'${dateStr}','end_time')"
           id="et-${dateStr}">
         ${rec&&rec.start_time&&rec.end_time?`<span style="font-size:12px;font-weight:700;color:var(--green);min-width:32px">${fmtH(calcHours(rec.start_time,rec.end_time))}</span>`:`<span style="min-width:32px"></span>`}
         <input style="background:rgba(0,0,0,0.2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;font-size:12px;flex:1;min-width:60px;color-scheme:dark" 
@@ -1239,6 +1239,24 @@ function nextMonth(){
 
 // pending save timers per date
 const _hTimers={};
+function fixTimeInput(el, date, field){
+  let v = el.value.trim();
+  if(!v) return;
+  // If only digits entered (e.g. "9", "10", "14") - add :00
+  if(/^\d{1,2}$/.test(v)){
+    v = v.padStart(2,'0') + ':00';
+    el.value = v;
+    autoSaveHours(date, field, v);
+  }
+  // If format like "9:" or "10:" - add 00
+  else if(/^\d{1,2}:$/.test(v)){
+    v = v.padStart(3,'0') + '00';
+    el.value = v;
+    autoSaveHours(date, field, v);
+  }
+}
+
+
 function autoSaveHours(date,field,value){
   let rec=A.workHours.find(h=>h.date===date);
   if(!rec){rec={id:null,coach_id:A.coach.id,date,start_time:"",end_time:"",notes:""};A.workHours.push(rec);}
