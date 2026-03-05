@@ -377,34 +377,27 @@ async function pollSubstitutes(){
   try{
     const myGIds=(A.groups||[]).map(g=>g.id);
     if(!myGIds.length)return;
-    // Fetch current sessions with substitutes for my groups + my sub sessions
     const [ownSess,subSess]=await Promise.all([
-      myGIds.length?dbG("sessions",`group_id=in.(${myGIds.join(",")})&substitute_coach_id=not.is.null`):[],
+      myGIds.length?dbG("sessions",`group_id=in.(${myGIds.join(",")})`):[],
       A.dbCoachId?dbG("sessions",`substitute_coach_id=eq.${A.dbCoachId}`):[]
     ]);
-    // Update A.sessions substitute fields
-    [...ownSess,...subSess].forEach(s=>{
+    // Update A.sessions
+    ownSess.forEach(s=>{
       const existing=A.sessions.find(x=>x.id===s.id);
-      if(existing) existing.substitute_coach_id=s.substitute_coach_id;
+      if(existing) Object.assign(existing,s);
+      else A.sessions.push(s);
     });
     // Update A.subSessions
+    const prevSubIds=new Set((A.subSessions||[]).map(s=>s.id));
+    const newSubIds=new Set(subSess.map(s=>s.id));
     A.subSessions=subSess;
-    // Refresh sub bars in DOM without full re-render
-    ownSess.forEach(s=>{
-      const bar=document.querySelector(`#sess-card-${s.date}-${s.group_id} .sub-bar-inner`);
-      const sub=(A.allCoaches||[]).find(x=>x.id===s.substitute_coach_id);
-      if(bar&&sub) bar.textContent="🔄 מחליף: "+sub.name;
+    subSess.forEach(s=>{
+      if(!A.sessions.find(x=>x.id===s.id)) A.sessions.push(s);
     });
-    // Remove bars where substitute was cleared
-    document.querySelectorAll('.sub-bar-inner').forEach(bar=>{
-      const card=bar.closest('[id^="sess-card-"]');
-      if(!card)return;
-      const parts=card.id.split('-');
-      const date=parts[2]+'-'+parts[3]+'-'+parts[4];
-      const gid=parts[5];
-      const sess=A.sessions.find(s=>s.date===date&&s.group_id===gid);
-      if(sess&&!sess.substitute_coach_id) bar.remove();
-    });
+    // Re-render only if something changed
+    const changed=subSess.some(s=>!prevSubIds.has(s.id))||[...prevSubIds].some(id=>!newSubIds.has(id))||
+      ownSess.some(s=>{const old=A.sessions.find(x=>x.id===s.id);return old&&old.substitute_coach_id!==s.substitute_coach_id;});
+    if(changed) renderPage();
   }catch(e){}
 }
 function startSubPolling(){
