@@ -1118,7 +1118,8 @@ function rHours(){
     const myGIds=new Set((A.groups||[]).filter(g=>g.coach_id===A.coach?.id).map(g=>g.id));
     const mySessToday=(A.sessions||[]).filter(s=>s.date===dateStr&&myGIds.has(s.group_id));
     const cancelledSess=mySessToday.filter(s=>s.cancelled);
-    const subSess=(A.sessions||[]).filter(s=>s.date===dateStr&&s.substitute_coach_id===A.coach?.id);
+    const allSess=[...(A.sessions||[]),...(A.allSessions||[])].filter((s,i,arr)=>arr.findIndex(x=>x.id===s.id)===i);
+    const subSess=allSess.filter(s=>s.date===dateStr&&s.substitute_coach_id===A.coach?.id);
     let dayNotice="";
     if(cancelledSess.length){
       const names=cancelledSess.map(s=>{const g=(A.groups||[]).find(x=>x.id===s.group_id);return g?esc(g.name):"";}).filter(Boolean).join(", ");
