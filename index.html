@@ -358,7 +358,7 @@ async function tryLogin(){
     A.isAdmin=!!coach.is_admin;
     ADMIN_IDS=A.isAdmin?[id]:[];
     if(A.isAdmin){ssave();await loadAdminData();showApp();return;}
-    ssave();await loadAll();showApp();
+    ssave();await loadAll();showApp();startSubPolling();
   }catch(e){toast("❌ "+e.message);btn.disabled=false;btn.textContent="כניסה →";}
 }
 
@@ -369,6 +369,52 @@ async function logout(){
   document.getElementById("hdr-sub").textContent="חוג שייט | עיריית תל אביב-יפו";
   renderLogin();
 }
+
+// Poll for substitute changes every 15 seconds
+let _subPollTimer=null;
+async function pollSubstitutes(){
+  if(!A.coach||A.isAdmin)return;
+  try{
+    const myGIds=(A.groups||[]).map(g=>g.id);
+    if(!myGIds.length)return;
+    // Fetch current sessions with substitutes for my groups + my sub sessions
+    const [ownSess,subSess]=await Promise.all([
+      myGIds.length?dbG("sessions",`group_id=in.(${myGIds.join(",")})&substitute_coach_id=not.is.null`):[],
+      A.dbCoachId?dbG("sessions",`substitute_coach_id=eq.${A.dbCoachId}`):[]
+    ]);
+    // Update A.sessions substitute fields
+    [...ownSess,...subSess].forEach(s=>{
+      const existing=A.sessions.find(x=>x.id===s.id);
+      if(existing) existing.substitute_coach_id=s.substitute_coach_id;
+    });
+    // Update A.subSessions
+    A.subSessions=subSess;
+    // Refresh sub bars in DOM without full re-render
+    ownSess.forEach(s=>{
+      const bar=document.querySelector(`#sess-card-${s.date}-${s.group_id} .sub-bar-inner`);
+      const sub=(A.allCoaches||[]).find(x=>x.id===s.substitute_coach_id);
+      if(bar&&sub) bar.textContent="🔄 מחליף: "+sub.name;
+    });
+    // Remove bars where substitute was cleared
+    document.querySelectorAll('.sub-bar-inner').forEach(bar=>{
+      const card=bar.closest('[id^="sess-card-"]');
+      if(!card)return;
+      const parts=card.id.split('-');
+      const date=parts[2]+'-'+parts[3]+'-'+parts[4];
+      const gid=parts[5];
+      const sess=A.sessions.find(s=>s.date===date&&s.group_id===gid);
+      if(sess&&!sess.substitute_coach_id) bar.remove();
+    });
+  }catch(e){}
+}
+function startSubPolling(){
+  if(_subPollTimer)clearInterval(_subPollTimer);
+  _subPollTimer=setInterval(pollSubstitutes,5000);
+}
+function stopSubPolling(){
+  if(_subPollTimer){clearInterval(_subPollTimer);_subPollTimer=null;}
+}
+
 
 function showApp(){
   document.getElementById("bnav").style.display="flex";
