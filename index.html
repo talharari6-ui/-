@@ -1171,13 +1171,13 @@ function rHours(){
         ${isToday?`<div style="font-size:9px;color:var(--blue-light);font-weight:700">היום</div>`:""}
       </div>
       <div style="flex:1;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <input type="time" style="background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;font-size:14px;width:90px;color-scheme:dark;" 
+        <input type="text" inputmode="numeric" style="background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;font-size:14px;width:80px;text-align:center;" 
           value="${rec?rec.start_time:""}" 
           placeholder="כניסה"
           onchange="autoSaveHours('${dateStr}','start_time',this.value)" onblur="fixTimeInput(this,'${dateStr}','start_time')"
           id="st-${dateStr}">
         <span style="color:var(--muted);font-size:12px">–</span>
-        <input type="time" style="background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;font-size:14px;width:90px;color-scheme:dark;" 
+        <input type="text" inputmode="numeric" style="background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;font-size:14px;width:80px;text-align:center;" 
           value="${rec?rec.end_time:""}" 
           placeholder="יציאה"
           onchange="autoSaveHours('${dateStr}','end_time',this.value)" onblur="fixTimeInput(this,'${dateStr}','end_time')"
