@@ -840,7 +840,7 @@ async function saveHours(){
   }catch(e){toast("❌ "+e.message);}
 }
 async function delHours(id){
-  if(!confirm("למחוק רשומה זו?"))return;
+  
   try{
     await dbD("work_hours",`id=eq.${id}`);
     A.workHours=A.workHours.filter(h=>h.id!==id);renderPage();
@@ -1269,7 +1269,7 @@ function autoSaveHours(date,field,value){
 }
 
 async function clearHours(date){
-  if(!confirm("לנקות את השעות ליום זה?"))return;
+  
   const rec=A.workHours.find(h=>h.date===date);
   if(!rec)return;
   try{
