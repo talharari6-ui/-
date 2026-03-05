@@ -381,24 +381,22 @@ async function pollSubstitutes(){
       myGIds.length?dbG("sessions",`group_id=in.(${myGIds.join(",")})`):[],
       A.dbCoachId?dbG("sessions",`substitute_coach_id=eq.${A.dbCoachId}`):[]
     ]);
-    // Update A.sessions
+    // Check if anything changed before re-rendering
+    let changed=false;
     ownSess.forEach(s=>{
       const existing=A.sessions.find(x=>x.id===s.id);
-      if(existing) Object.assign(existing,s);
-      else A.sessions.push(s);
+      if(existing){
+        if(existing.substitute_coach_id!==s.substitute_coach_id||existing.cancelled!==s.cancelled){changed=true;}
+        Object.assign(existing,s);
+      } else {A.sessions.push(s);changed=true;}
     });
-    // Update A.subSessions
-    const prevSubIds=new Set((A.subSessions||[]).map(s=>s.id));
-    const newSubIds=new Set(subSess.map(s=>s.id));
+    const prevSubIds=JSON.stringify((A.subSessions||[]).map(s=>s.id).sort());
+    const newSubIds=JSON.stringify(subSess.map(s=>s.id).sort());
+    if(prevSubIds!==newSubIds) changed=true;
     A.subSessions=subSess;
-    subSess.forEach(s=>{
-      if(!A.sessions.find(x=>x.id===s.id)) A.sessions.push(s);
-    });
-    // Re-render only if something changed
-    const changed=subSess.some(s=>!prevSubIds.has(s.id))||[...prevSubIds].some(id=>!newSubIds.has(id))||
-      ownSess.some(s=>{const old=A.sessions.find(x=>x.id===s.id);return old&&old.substitute_coach_id!==s.substitute_coach_id;});
+    subSess.forEach(s=>{if(!A.sessions.find(x=>x.id===s.id)){A.sessions.push(s);}});
     if(changed) renderPage();
-  }catch(e){}
+  }catch(e){console.log("poll error",e);}
 }
 function startSubPolling(){
   if(_subPollTimer)clearInterval(_subPollTimer);
