@@ -402,7 +402,7 @@ function goBack(){
     A.subView=null;A.activeGroupId=null;A.activeDate=null;
     if(pv==="admin-overview"||A.view==="admin-overview"){renderPage();setTimeout(updateAdminDetail,0);}
     else if(pv==="my-cancellations"){nav('my-cancellations');}
-    else if(pv==="coach-calendar"){nav('coach-calendar');}
+    else if(pv==="coach-calendar"){A.scheduleView='month';nav('schedule');}
     else if(A.view==="schedule")loadScheduleData().then(renderPage);
     else renderPage();
   }
