@@ -688,19 +688,30 @@ async function substituteSession(date, groupId){
   const sess=A.sessions.find(s=>s.group_id===groupId&&s.date===date);
   const myGroupIds=new Set((A.groups||[]).filter(g=>g.coach_id===A.coach?.id).map(g=>g.id));
   const isMyGroup=myGroupIds.has(groupId);
-  // Admin sees all non-admin coaches; coach sees everyone except themselves and admins
-  // But coach CAN mark themselves as substitute for OTHER coaches' groups
-  let coaches;
-  if(A.isAdmin){
-    coaches=(A.allCoaches||[]).filter(x=>!x.is_admin);
-  } else if(!isMyGroup){
-    // This is someone else's group - show self first + others
-    const me=(A.allCoaches||[]).find(x=>x.id===A.dbCoachId||(x.login_code&&x.login_code===A.coach?.id));
-    const others=(A.allCoaches||[]).filter(x=>x.id!==me?.id&&!x.is_admin);
-    coaches=me?[me,...others]:others;
-  } else {
-    coaches=(A.allCoaches||[]).filter(x=>x.id!==A.coach?.id&&!x.is_admin);
+  // If not admin and not my group - auto-assign self as substitute without showing modal
+  if(!A.isAdmin&&!isMyGroup){
+    const me=(A.allCoaches||[]).find(x=>x.id===A.dbCoachId);
+    if(me){
+      try{
+        let sess=A.sessions.find(s=>s.group_id===groupId&&s.date===date);
+        const alreadyMe=sess&&sess.substitute_coach_id===me.id;
+        if(alreadyMe){
+          // Toggle off
+          if(sess){await dbPa("sessions",`id=eq.${sess.id}`,{substitute_coach_id:null});sess.substitute_coach_id=null;}
+          A.subSessions=(A.subSessions||[]).filter(s=>s.id!==sess?.id);
+          renderPage();toast("✅ הוסרת מרשימת המחליפים");
+        } else {
+          if(!sess){const res=await dbP("sessions",{group_id:groupId,date,substitute_coach_id:me.id,coach_note:""});sess=res[0];A.sessions.push(sess);}
+          else{await dbPa("sessions",`id=eq.${sess.id}`,{substitute_coach_id:me.id});sess.substitute_coach_id=me.id;}
+          A.subSessions=A.subSessions||[];
+          if(!A.subSessions.find(s=>s.id===sess.id))A.subSessions.push(sess);
+          renderPage();toast("🔄 סומנת כמחליף");
+        }
+      }catch(e){toast("❌ "+e.message);}
+    }
+    return;
   }
+  const coaches=(A.allCoaches||[]).filter(x=>x.id!==A.coach?.id&&!x.is_admin);
   const list=document.getElementById("sub-list");
   const clearBtn=document.getElementById("sub-clear-btn");
   if(!list)return;
