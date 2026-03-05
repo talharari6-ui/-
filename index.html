@@ -1979,7 +1979,6 @@ function rAdminMonthly(){
       ${(yr!==now.getFullYear()||mn!==now.getMonth())?`<button class="btn btn-g btn-sm" onclick="A.adminMonth=${now.getMonth()};A.adminYear=${now.getFullYear()};loadAdminData().then(renderPage)">היום</button>`:""}
     </div>
     <div class="sgrid" style="margin-bottom:12px">
-      <div class="sc"><div class="si">📅</div><div class="sv" style="color:var(--purple)">${monthSess.length}</div><div class="sl">פעילויות</div></div>
       <div class="sc" style="cursor:pointer" onclick="nav('admin-cancellations')" style="cursor:pointer"><div class="si">⚠️</div><div class="sv" style="color:var(--yellow)">${monthCanc.length}</div><div class="sl">דחיות</div></div>
       <div class="sc" style="cursor:pointer" onclick="nav('admin-substitutions')"><div class="si">🔄</div><div class="sv" style="color:#a78bfa">${(()=>{return A.allSessions.filter(s=>s.substitute_coach_id).length;})()}</div><div class="sl">החלפות</div></div>
       <div class="sc" style="cursor:pointer" onclick="nav('admin-absences')"><div class="si">🚫</div><div class="sv" style="color:#ef4444">${(()=>{let tot=0;const mnSess=A.allSessions.filter(s=>!s.cancelled);mnSess.forEach(s=>{const att=A.allAttendance[s.id]||{};tot+=Object.values(att).filter(v=>v===false).length;});return tot;})()}</div><div class="sl">חיסורים</div></div>
