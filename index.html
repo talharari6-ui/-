@@ -402,6 +402,7 @@ function goBack(){
     A.subView=null;A.activeGroupId=null;A.activeDate=null;
     if(pv==="admin-overview"||A.view==="admin-overview"){renderPage();setTimeout(updateAdminDetail,0);}
     else if(pv==="my-cancellations"){nav('my-cancellations');}
+    else if(pv==="coach-calendar"){nav('coach-calendar');}
     else if(A.view==="schedule")loadScheduleData().then(renderPage);
     else renderPage();
   }
@@ -875,6 +876,7 @@ function renderPage(){
   else if(A.subView==="assignSailors")setC(rAssign());
 
   else if(A.view==="schedule")setC(rSchedule());
+  else if(A.view==="coach-calendar")setC(rCoachCalendar());
   else if(A.view==="hours")setC(rHours());
   else if(A.view==="sailors")setC(rSailors());
   else if(A.view==="history")setC(rHistory());
@@ -1027,6 +1029,7 @@ function rSchedule(isAdmin=false){
   }
   return`
     <h2 style="font-size:20px;font-weight:800;margin-bottom:10px">📅 לוח</h2>
+    <button class="btn btn-g btn-sm" style="margin-bottom:10px" onclick="A.adminDayDetail=null;if(!A.adminMonth&&A.adminMonth!==0)A.adminMonth=new Date().getMonth();if(!A.adminYear)A.adminYear=new Date().getFullYear();nav('coach-calendar')">🗓️ לוח חודשי</button>
     ${filterHtml}
     <div class="wnav">
       <button class="warr" onclick="A.scheduleView==='month'?(A.monthOffset--,renderPage()):A.weekOffset--;nav('${navStr}')">&#8594;</button>
@@ -1956,6 +1959,113 @@ async function exportAbsencesXlsx(){
   a.download=`חיסורים_${mName}.csv`;
   a.click();
   toast("📥 מוריד...");
+}
+
+
+function updateCoachDetail(){
+  const container=document.getElementById("coach-detail-panel");
+  if(!container){renderPage();return;}
+  if(!A.adminDayDetail){container.innerHTML="";return;}
+  const dDate=A.adminDayDetail;
+  const mnStr=dDate.slice(5,7);
+  const dDow=new Date(dDate+"T00:00:00").getDay();
+  const myGroups=(A.groups||[]).filter(g=>g.coach_id===A.coach?.id&&(g.days_of_week||[]).includes(dDow));
+  const sessMap={};
+  A.sessions.forEach(s=>{if(!sessMap[s.date])sessMap[s.date]=[];sessMap[s.date].push(s);});
+  const dSess=sessMap[dDate]||[];
+  const dDay=parseInt(dDate.split("-")[2]);
+  if(!myGroups.length){container.innerHTML="";return;}
+  container.innerHTML=`<div style="margin-bottom:14px;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border)">
+      <div style="font-weight:800">יום ${DL[dDow]} ${String(dDay).padStart(2,"0")}/${mnStr}</div>
+      <button onclick="A.adminDayDetail=null;updateCoachDetail()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>
+    </div>
+    ${myGroups.map(g=>{
+      const sess=dSess.find(s=>s.group_id===g.id);
+      const isCancelled=sess?.cancelled;
+      const sailors=g.sailorIds||[];
+      const att=sess?A.attendance[sess.id]||{}:{};
+      const present=sailors.filter(id=>att[id]===true).length;
+      const hasAtt=Object.values(att).some(v=>v!==null);
+      return "<div onclick=\"A.subView=null;A.prevView='coach-calendar';A.activeGroupId='"+g.id+"';A.activeDate='"+dDate+"';A.subView='groupDetail';renderPage()\" style='display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid rgba(255,255,255,0.04);cursor:pointer'>"
+        +"<div style='width:3px;height:36px;border-radius:2px;background:"+(isCancelled?"#ef4444":g.color)+"'></div>"
+        +"<div style='flex:1'>"
+          +"<div style='font-weight:700;font-size:13px;color:"+(isCancelled?"#ef4444":g.color)+"'>"+(isCancelled?"❌ ":"")+esc(g.name)+"</div>"
+          +"<div style='font-size:11px;color:var(--muted);margin-top:2px'>"+(g.start_time||"")+"</div>"
+        +"</div>"
+        +"<div style='font-size:12px;font-weight:700;color:"+(hasAtt?(present===sailors.length?"var(--green)":"var(--yellow)"):"var(--muted)")+"'>"
+          +(hasAtt?present+"/"+sailors.length:sailors.length+" חנ'")
+        +"</div>"
+        +"</div>";
+    }).join("")}
+  </div>`;
+}
+
+function rCoachCalendar(){
+  const now=new Date();
+  const yr=A.adminYear||now.getFullYear();
+  const mn=A.adminMonth!==undefined?A.adminMonth:now.getMonth();
+  const mName=new Intl.DateTimeFormat("he-IL",{month:"long",year:"numeric"}).format(new Date(yr,mn,1));
+  const dim=new Date(yr,mn+1,0).getDate();
+  const mnStr=String(mn+1).padStart(2,"0");
+  const todayStr=td();
+  const myGroups=(A.groups||[]).filter(g=>g.coach_id===A.coach?.id);
+  const myGroupIds=new Set(myGroups.map(g=>g.id));
+
+  const sessMap={};
+  A.sessions.forEach(s=>{if(!sessMap[s.date])sessMap[s.date]=[];sessMap[s.date].push(s);});
+
+  // Calendar grid
+  const firstDow=new Date(yr,mn,1).getDay();
+  const totalCells=Math.ceil((firstDow+dim)/7)*7;
+  const dayHdrs=["א","ב","ג","ד","ה","ו","ש"].map(h=>`<div style="text-align:center;font-size:11px;font-weight:800;color:var(--muted);padding:5px 0">${h}</div>`).join("");
+
+  let cells="";
+  for(let i=0;i<totalCells;i++){
+    const day=i-firstDow+1;
+    const isValid=day>=1&&day<=dim;
+    if(!isValid){cells+=`<div></div>`;continue;}
+    const dateStr=yr+"-"+mnStr+"-"+String(day).padStart(2,"0");
+    const isToday=dateStr===todayStr;
+    const isPast=dateStr<todayStr;
+    const dow=new Date(dateStr+"T00:00:00").getDay();
+    const dayGroups=myGroups.filter(g=>(g.days_of_week||[]).includes(dow));
+    const dbSess=sessMap[dateStr]||[];
+
+    const dots=dayGroups.map(g=>{
+      const sess=dbSess.find(s=>s.group_id===g.id);
+      const isCancelled=sess?.cancelled;
+      const hasAtt=sess&&Object.values(A.attendance[sess.id]||{}).some(v=>v!==null);
+      return`<div title="${esc(g.name)}" style="width:8px;height:8px;border-radius:50%;flex-shrink:0;
+        background:${isCancelled?"#ef4444":g.color};
+        opacity:${isCancelled?0.5:1};
+        outline:${hasAtt?"2px solid #34d39388":"none"}"></div>`;
+    }).join("");
+
+    cells+=`<div onclick="A.adminDayDetail='${dateStr}';A.subView=null;A.activeGroupId=null;updateCoachDetail()" style="
+      min-height:70px;padding:5px;border-radius:8px;cursor:${dayGroups.length?'pointer':'default'};
+      border:1px solid ${isToday?"var(--blue)":"var(--border)"};
+      background:${isToday?"rgba(59,130,246,0.12)":isPast?"rgba(0,0,0,0.15)":"var(--card)"};
+      transition:background 0.15s">
+      <div style="font-size:12px;font-weight:${isToday?"800":"600"};color:${isToday?"var(--blue-light)":"var(--text)"};margin-bottom:4px">${day}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:3px">${dots}</div>
+    </div>`;
+  }
+
+  return`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <h2 style="font-size:20px;font-weight:800;flex:1">📅 לוח חודשי</h2>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 12px">
+      <button class="warr" onclick="A.adminMonth--;if(A.adminMonth<0){A.adminMonth=11;A.adminYear--;}A.adminDayDetail=null;renderPage()">&#8594;</button>
+      <div style="flex:1;text-align:center;font-weight:800;font-size:16px">${mName}</div>
+      <button class="warr" onclick="A.adminMonth++;if(A.adminMonth>11){A.adminMonth=0;A.adminYear++;}A.adminDayDetail=null;renderPage()">&#8592;</button>
+      ${(yr!==now.getFullYear()||mn!==now.getMonth())?`<button class="btn btn-g btn-sm" onclick="A.adminMonth=${now.getMonth()};A.adminYear=${now.getFullYear()};A.adminDayDetail=null;renderPage()">היום</button>`:""}
+    </div>
+    <div id="coach-detail-panel"></div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px">${dayHdrs}</div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">${cells}</div>
+  `;
 }
 
 
