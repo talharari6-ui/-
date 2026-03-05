@@ -1623,7 +1623,8 @@ function rSession(){
 function rHistory(){
   if(!A.groups.length)return`<h2 style="font-size:20px;font-weight:800;margin-bottom:20px">📊 קבוצות</h2>
     <div style="text-align:center;padding:60px 0;color:var(--muted)"><div style="font-size:48px">📊</div><p>עוד אין נתונים</p></div>`;
-  const myCancelled=A.sessions.filter(s=>s.cancelled);
+  const myGroupIds=new Set((A.groups||[]).filter(g=>g.coach_id===A.coach?.id).map(g=>g.id));
+  const myCancelled=A.sessions.filter(s=>s.cancelled&&myGroupIds.has(s.group_id));
   const cb=myCancelled.length?`<button class="btn btn-sm" style="margin-bottom:14px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;width:100%;text-align:right" onclick="nav('my-cancellations')">⚠️ פעילויות שנדחו (${myCancelled.length}) ←</button>`:"";
   return`<h2 style="font-size:20px;font-weight:800;margin-bottom:12px">📊 קבוצות</h2>
     <div style="display:flex;gap:8px;margin-bottom:16px">
@@ -1959,7 +1960,9 @@ async function exportAbsencesXlsx(){
 
 
 function rMyCancellations(){
-  const cancelled=A.sessions.filter(s=>s.cancelled).sort((a,b)=>b.date.localeCompare(a.date));
+  // Only show cancellations for groups belonging to this coach
+  const myGroupIds=new Set((A.groups||[]).filter(g=>g.coach_id===A.coach?.id).map(g=>g.id));
+  const cancelled=A.sessions.filter(s=>s.cancelled&&myGroupIds.has(s.group_id)).sort((a,b)=>b.date.localeCompare(a.date));
 
   // group by month
   const byMonth={};
