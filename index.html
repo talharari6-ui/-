@@ -730,6 +730,8 @@ async function clearSubstitute(){
     if(sess){
       await dbPa("sessions",`id=eq.${sess.id}`,{substitute_coach_id:null});
       sess.substitute_coach_id=null;
+      // Also remove from A.subSessions so 'mine' filter updates immediately
+      A.subSessions=(A.subSessions||[]).filter(s=>s.id!==sess.id);
     }
     closeSubModal();renderPage();
     toast("✅ החלפה הוסרה");
