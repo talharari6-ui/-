@@ -701,6 +701,9 @@ async function substituteSession(date, groupId){
           A.subSessions=(A.subSessions||[]).filter(s=>s.id!==sess?.id);
           // Update button visually without full re-render
           document.querySelectorAll('[data-sub-gid="'+groupId+'"][data-sub-date="'+date+'"]').forEach(b=>{b.style.background="";b.style.color="#a78bfa";b.textContent="🔄 החלפה";});
+          // Remove substitute bar from card
+          const card2=document.getElementById("sess-card-"+date+"-"+groupId);
+          if(card2){const bar2=card2.querySelector(".sub-bar-inner");if(bar2)bar2.remove();}
           toast("✅ הוסרת מרשימת המחליפים");
         } else {
           if(!sess){const res=await dbP("sessions",{group_id:groupId,date,substitute_coach_id:me.id});sess=res[0];A.sessions.push(sess);}
@@ -709,6 +712,18 @@ async function substituteSession(date, groupId){
           if(!A.subSessions.find(s=>s.id===sess.id))A.subSessions.push(sess);
           // Update button visually without full re-render
           document.querySelectorAll('[data-sub-gid="'+groupId+'"][data-sub-date="'+date+'"]').forEach(b=>{b.style.background="rgba(167,139,250,0.2)";b.style.color="#a78bfa";b.textContent="✓ מחליף";});
+          // Show substitute bar in card
+          const card=document.getElementById("sess-card-"+date+"-"+groupId);
+          if(card){
+            let bar=card.querySelector(".sub-bar-inner");
+            if(!bar){
+              bar=document.createElement("div");
+              bar.className="sub-bar-inner";
+              bar.style.cssText="background:rgba(167,139,250,0.1);padding:4px 12px;font-size:11px;font-weight:700;color:#a78bfa;border-bottom:1px solid rgba(167,139,250,0.2)";
+              card.insertBefore(bar,card.firstChild);
+            }
+            bar.textContent="🔄 מחליף: "+(me?.name||"");
+          }
           toast("🔄 סומנת כמחליף");
         }
       }catch(e){toast("❌ "+e.message);}
@@ -1125,7 +1140,7 @@ function rSchedule(isAdmin=false){
         </div>
         ${items.length===0?`<div style="font-size:12px;color:var(--muted);padding:6px 0 2px;padding-right:4px">אין פעילות</div>`
         :items.map(({g,coach,isMe})=>`
-          <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;border-right:3px solid ${g.color};${isMe||isAdmin?"":"opacity:0.55"}overflow:hidden">
+          <div id="sess-card-${ds}-${g.id}" style="background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;border-right:3px solid ${g.color};${isMe||isAdmin?"":"opacity:0.55"}overflow:hidden">
             ${(function(){var _s=A.sessions.find(function(x){return x.date===ds&&x.group_id===g.id;});return (_s&&_s.cancelled?'<div style="background:rgba(245,158,11,0.1);padding:4px 12px;font-size:11px;font-weight:700;color:#f59e0b;border-bottom:1px solid rgba(245,158,11,0.2)">'+"⚠️ דחוי"+(_s.cancel_reason?" · "+esc(_s.cancel_reason):"")+'</div>':"") + (_s&&_s.substitute_coach_id?(function(){var _sub=(A.allCoaches||[]).find(function(x){return x.id===_s.substitute_coach_id;});return '<div style="background:rgba(167,139,250,0.1);padding:4px 12px;font-size:11px;font-weight:700;color:#a78bfa;border-bottom:1px solid rgba(167,139,250,0.2)">🔄 מחליף: '+esc(_sub?_sub.name:"")+'</div>';})():"")})()}
             <div style="display:flex;align-items:center;gap:10px;padding:10px 12px">
               <div style="width:8px;height:8px;border-radius:50%;background:${g.color};flex-shrink:0"></div>
