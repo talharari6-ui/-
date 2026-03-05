@@ -700,7 +700,7 @@ async function substituteSession(date, groupId){
           if(sess){await dbPa("sessions",`id=eq.${sess.id}`,{substitute_coach_id:null});sess.substitute_coach_id=null;}
           A.subSessions=(A.subSessions||[]).filter(s=>s.id!==sess?.id);
           // Update button visually without full re-render
-          document.querySelectorAll('[data-sub-gid="'+groupId+'"][data-sub-date="'+date+'"]').forEach(b=>{b.style.background="";b.style.color="#a78bfa";b.textContent="🔄 החלפה";});
+          document.querySelectorAll('[data-sub-gid="'+groupId+'"][data-sub-date="'+date+'"]').forEach(b=>{b.removeAttribute('style');b.setAttribute('style','flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:#a78bfa;font-size:12px;font-weight:700;cursor:pointer');b.textContent="🔄 החלפה";});
           // Remove substitute bar from card
           const card2=document.getElementById("sess-card-"+date+"-"+groupId);
           if(card2){const bar2=card2.querySelector(".sub-bar-inner");if(bar2)bar2.remove();}
