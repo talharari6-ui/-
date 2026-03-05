@@ -1189,7 +1189,7 @@ function rHours(){
           onchange="autoSaveHours('${dateStr}','notes',this.value)" oninput="autoSaveHours('${dateStr}','notes',this.value)"
           id="nt-${dateStr}">
         <span id="cpybtn-${dateStr}" style="display:flex;gap:4px">${rec&&rec.start_time&&rec.end_time?`<button onclick="showCopyModal('${dateStr}')" style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:var(--blue-light);border-radius:8px;padding:6px 8px;font-size:12px;cursor:pointer">📋</button>`:""}</span>
-        ${rec&&(rec.start_time||rec.end_time||rec.notes)?`<button id="clrbtn-${dateStr}" onclick="clearHours('${dateStr}')" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:8px;padding:6px 8px;font-size:12px;cursor:pointer">🗑️</button>`:""}
+        <button id="clrbtn-${dateStr}" onclick="clearHours('${dateStr}')" style="display:${rec&&(rec.start_time||rec.end_time||rec.notes)?'inline-block':'none'};background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:8px;padding:6px 8px;font-size:12px;cursor:pointer">🗑️</button>
         <span id="sv-${dateStr}" style="font-size:10px;color:var(--green);font-weight:700;opacity:0;transition:opacity 0.3s;min-width:40px">✓ נשמר</span>
       </div>
       ${dayNotice}
@@ -1257,6 +1257,9 @@ function autoSaveHours(date,field,value){
   const gEl=document.getElementById("grand-total");if(gEl)gEl.textContent=fmtH(gTotal);
   clearTimeout(_hTimers[date]);
   _hTimers[date]=setTimeout(()=>persistHours(date),800);
+  // Show/hide clear button based on whether there's data
+  const clrBtn=document.getElementById("clrbtn-"+date);
+  if(clrBtn) clrBtn.style.display=(rec.start_time||rec.end_time||rec.notes)?"inline-block":"none";;
   // Show/hide copy button immediately
   const cpyEl=document.getElementById("cpybtn-"+date);
   if(cpyEl){
