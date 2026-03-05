@@ -470,8 +470,11 @@ function goBack(){
 
 function setC(html,login=false){
   const mc=document.getElementById("mc");
+  const prevScroll=login?0:mc.scrollTop;
   mc.className=login?"content-login":"content";
-  mc.innerHTML=html;mc.scrollTop=0;
+  mc.innerHTML=html;
+  if(login) mc.scrollTop=0;
+  else requestAnimationFrame(()=>{mc.scrollTop=prevScroll;});
 }
 
 // ── Group actions ─────────────────────────────────────────────
