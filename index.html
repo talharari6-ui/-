@@ -1963,6 +1963,14 @@ async function exportAbsencesXlsx(){
 }
 
 
+function schedCellClick(ds){
+  A.adminDayDetail=ds;
+  const panel=document.getElementById("coach-detail-panel");
+  if(panel) updateCoachDetail();
+  else renderPage();
+}
+
+
 function updateCoachDetail(){
   const container=document.getElementById("coach-detail-panel");
   if(!container){renderPage();return;}
