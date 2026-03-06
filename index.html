@@ -1931,7 +1931,10 @@ async function loadNotifications(){
   if(!A.dbCoachId||A.isAdmin)return;
   try{
     const notes=await dbG("notifications",`coach_id=eq.${A.dbCoachId}&read=eq.false`,"created_at.desc");
-    A.notifications=notes;
+    const prev=JSON.stringify((A.notifications||[]).map(n=>n.id).sort());
+    A.notifications=notes||[];
+    const next=JSON.stringify((A.notifications||[]).map(n=>n.id).sort());
+    if(prev!==next) renderPage();
   }catch(e){console.log("notif error",e);}
 }
 
