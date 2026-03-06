@@ -358,7 +358,7 @@ async function tryLogin(){
     A.isAdmin=!!coach.is_admin;
     ADMIN_IDS=A.isAdmin?[id]:[];
     if(A.isAdmin){ssave();await loadAdminData();showApp();return;}
-    ssave();await loadAll();showApp();startSubPolling();
+    ssave();await loadAll();showApp();startSubPolling();await loadNotifications();
   }catch(e){toast("❌ "+e.message);btn.disabled=false;btn.textContent="כניסה →";}
 }
 
@@ -404,7 +404,7 @@ async function pollSubstitutes(){
 }
 function startSubPolling(){
   if(_subPollTimer)clearInterval(_subPollTimer);
-  _subPollTimer=setInterval(pollSubstitutes,5000);
+  _subPollTimer=setInterval(async()=>{await pollSubstitutes();await loadNotifications();},5000);
 }
 function stopSubPolling(){
   if(_subPollTimer){clearInterval(_subPollTimer);_subPollTimer=null;}
@@ -1199,6 +1199,20 @@ function rSchedule(isAdmin=false){
       <button class="warr" onclick="A.scheduleView==='month'?(A.monthOffset++,renderPage()):A.weekOffset++;nav('${navStr}')">&#8592;</button>
     </div>
     ${(A.scheduleView==="month"?moff!==0:off!==0)?`<button class="btn btn-g btn-sm" style="margin-bottom:12px" onclick="A.scheduleView==='month'?(A.monthOffset=0,renderPage()):(A.weekOffset=0,nav('${navStr}'))">↩ היום</button>`:""}
+    ${(!isAdmin&&A.notifications&&A.notifications.filter(n=>!n.read).length)?`
+    <div style="margin-bottom:12px">
+      ${A.notifications.filter(n=>!n.read).map(n=>{
+        const isApproved=n.type==='approved';
+        const color=isApproved?'var(--green)':'#ef4444';
+        const border=isApproved?'rgba(34,197,94,0.3)':'rgba(239,68,68,0.3)';
+        const bg=isApproved?'rgba(34,197,94,0.07)':'rgba(239,68,68,0.07)';
+        return "<div style=\"display:flex;align-items:center;gap:8px;background:"+bg+";border:1px solid "+border+";border-radius:10px;padding:10px 14px;margin-bottom:6px\">"
+          +"<div style=\"font-size:18px\">"+(isApproved?"✅":"❌")+"</div>"
+          +"<div style=\"flex:1;font-size:13px;color:"+color+";font-weight:600\">"+esc(n.message)+"</div>"
+          +"<button onclick=\"dismissNotification('"+n.id+"')\" style=\"background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 4px\">✕</button>"
+          +"</div>";
+      }).join('')}
+    </div>`:""}
     ${vm==="month"?monthCalHTML:""}
     ${viewDays.map(d=>{
       const ds=toISO(d);
@@ -1913,11 +1927,46 @@ function rHistory(){
 
 // ── ADMIN VIEWS ───────────────────────────────────────────────
 
+async function loadNotifications(){
+  if(!A.dbCoachId||A.isAdmin)return;
+  try{
+    const notes=await dbG("notifications",`coach_id=eq.${A.dbCoachId}&read=eq.false`,"created_at.desc");
+    A.notifications=notes;
+  }catch(e){console.log("notif error",e);}
+}
+
+async function dismissNotification(id){
+  try{
+    await dbPa("notifications","id=eq."+id,{read:true});
+    if(A.notifications)A.notifications=A.notifications.filter(n=>n.id!==id);
+    renderPage();
+  }catch(e){toast("❌ "+e.message);}
+}
+
+async function createNotification(coachId, sessId, type, message){
+  try{
+    await dbP("notifications",{coach_id:coachId,session_id:sessId,type,message,read:false});
+  }catch(e){console.log("notif create error",e);}
+}
+
+
 async function approveSession(sessId, approved){
   try{
     await dbPa("sessions","id=eq."+sessId,{admin_approved:approved});
-    const s=(A.allSessions||[]).find(x=>x.id===sessId);
+    const s=(A.allSessions||[]).find(x=>x.id===sessId)||(A.sessions||[]).find(x=>x.id===sessId);
     if(s) s.admin_approved=approved;
+    // Create notification for relevant coach
+    if(s){
+      const g=(A.allGroups||[]).find(x=>x.id===s.group_id);
+      const targetCoachId=s.substitute_coach_id||g?.coach_id;
+      if(targetCoachId){
+        const isSub=!!s.substitute_coach_id;
+        const msg=isSub
+          ?(approved?"בקשת ההחלפה שלך אושרה ✓":"בקשת ההחלפה שלך נדחתה ✗")
+          :(approved?"דחיית הפעילות אושרה ✓":"דחיית הפעילות לא אושרה ✗");
+        await createNotification(targetCoachId, sessId, approved?"approved":"rejected", msg);
+      }
+    }
     renderPage();
     toast(approved?"✅ אושר":"❌ לא אושר");
   }catch(e){toast("❌ "+e.message);}
