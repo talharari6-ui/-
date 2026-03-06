@@ -2018,9 +2018,10 @@ function rAdminMonthly(){
       <div class="sc" style="cursor:pointer" onclick="nav('admin-absences')"><div class="si">🚫</div><div class="sv" style="color:#ef4444">${(()=>{let tot=0;const mnSess=A.allSessions.filter(s=>!s.cancelled);mnSess.forEach(s=>{const att=A.allAttendance[s.id]||{};tot+=Object.values(att).filter(v=>v===false).length;});return tot;})()}</div><div class="sl">חיסורים</div></div>
     </div>
     ${(()=>{
-      const allS=[...(A.allSessions||[]),...(A.sessions||[]).filter(s=>!(A.allSessions||[]).find(x=>x.id===s.id))];const pending=allS.filter(s=>(s.cancelled||s.substitute_coach_id)&&s.admin_approved===null);
-      if(!pending.length)return "";
-      const rows=pending.map(s=>{
+      const allS=[...(A.allSessions||[]),...(A.sessions||[]).filter(s=>!(A.allSessions||[]).find(x=>x.id===s.id))];const pendingCanc=allS.filter(s=>s.cancelled&&s.admin_approved!==true&&s.admin_approved!==false);
+      const pendingSub=allS.filter(s=>s.substitute_coach_id&&!s.cancelled&&s.admin_approved!==true&&s.admin_approved!==false);
+      if(!pendingCanc.length&&!pendingSub.length)return "";
+      const makeRows=(list)=>list.map(s=>{
         const g=(A.allGroups||[]).find(x=>x.id===s.group_id);
         const coach=(A.allCoaches||[]).find(x=>x.id===g?.coach_id);
         const sub=s.substitute_coach_id?(A.allCoaches||[]).find(x=>x.id===s.substitute_coach_id):null;
@@ -2035,9 +2036,13 @@ function rAdminMonthly(){
           +" <button class=\"btn btn-sm\" style=\"background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);padding:4px 10px\" onclick=\"approveSession(\'"+s.id+"\',false)\">✗ דחה</button>"
           +"</div>";
       }).join("");
-      return "<div style=\"background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:14px 16px;margin-bottom:14px\">"
-        +"<div style=\"font-size:14px;font-weight:800;color:#f59e0b;margin-bottom:10px\">🔔 ממתינים לאישורך ("+pending.length+")</div>"
-        +rows+"</div>";
+      const cancBox=pendingCanc.length?"<div style=\"background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:14px 16px;margin-bottom:10px\">"
+        +"<div style=\"font-size:13px;font-weight:800;color:#f59e0b;margin-bottom:8px\">⚠️ דחיות ממתינות לאישור ("+pendingCanc.length+")</div>"
+        +makeRows(pendingCanc)+"</div>":"";
+      const subBox=pendingSub.length?"<div style=\"background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.3);border-radius:12px;padding:14px 16px;margin-bottom:10px\">"
+        +"<div style=\"font-size:13px;font-weight:800;color:#a78bfa;margin-bottom:8px\">🔄 החלפות ממתינות לאישור ("+pendingSub.length+")</div>"
+        +makeRows(pendingSub)+"</div>":"";
+      return "<div style=\"margin-bottom:4px\">"+cancBox+subBox+"</div>";
     })()}
     <div style="display:flex;gap:8px;margin-bottom:14px">
       <button class="filter-btn ${A.adminView==='agenda'?'active':''}" onclick="A.adminView='agenda';renderPage()">📋 רשימה</button>
@@ -3017,4 +3022,4 @@ function showBirthdayToast(name){
 
 </script>
 </body>
-</html>+(_s.admin_approved===true?' · <span style="color:var(--green)">✓ מאושר</span>':_s.admin_approved===false?' · <span style="color:#ef4444">✗ לא אושר</span>':' · <span style="color:#f59e0b">ממתין לאישור</span>')
+</html>
