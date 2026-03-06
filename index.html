@@ -379,7 +379,7 @@ async function pollSubstitutes(){
     if(!myGIds.length)return;
     const [ownSess,subSess]=await Promise.all([
       myGIds.length?dbG("sessions",`group_id=in.(${myGIds.join(",")})`):[],
-      (!A.isAdmin&&A.dbCoachId)?dbG("sessions",`substitute_coach_id=eq.${A.dbCoachId}`):[]
+      (!A.isAdmin&&A.dbCoachId)?dbG("sessions",`substitute_coach_id=eq.${A.dbCoachId}`):(A.isAdmin?dbG("sessions","substitute_coach_id=not.is.null"):[])
     ]);
     // Snapshot before update
     const prevSnap=JSON.stringify((A.sessions||[]).map(s=>({id:s.id,sub:s.substitute_coach_id,cancelled:s.cancelled,approved:s.admin_approved})).sort((a,b)=>a.id>b.id?1:-1));
@@ -389,6 +389,12 @@ async function pollSubstitutes(){
       const existing=A.sessions.find(x=>x.id===s.id);
       if(existing) Object.assign(existing,s);
       else A.sessions.push(s);
+      // also update allSessions for admin overview
+      if(A.allSessions){
+        const ex2=A.allSessions.find(x=>x.id===s.id);
+        if(ex2) Object.assign(ex2,s);
+        else A.allSessions.push(s);
+      }
     });
     A.subSessions=subSess;
     // Compare after update
