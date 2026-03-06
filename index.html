@@ -382,7 +382,7 @@ async function pollSubstitutes(){
       (!A.isAdmin&&A.dbCoachId)?dbG("sessions",`substitute_coach_id=eq.${A.dbCoachId}`):(A.isAdmin?dbG("sessions","substitute_coach_id=not.is.null"):[]),
       A.isAdmin?dbG("sessions","cancelled=eq.true"):[]
     ]);
-    // Snapshot of current state BEFORE applying fetched data
+    // Take snapshot BEFORE merge
     const snapFn=arr=>JSON.stringify((arr||[]).map(s=>({id:s.id,sub:s.substitute_coach_id,cancelled:s.cancelled,approved:s.admin_approved})).sort((a,b)=>a.id>b.id?1:-1));
     const prevSnap=snapFn(A.sessions);
     const prevAllSnap=snapFn(A.allSessions);
@@ -398,10 +398,8 @@ async function pollSubstitutes(){
       }
     });
     A.subSessions=subSess;
-    // Compare after applying
-    const newSnap=snapFn(A.sessions);
-    const newAllSnap=snapFn(A.allSessions);
-    if(prevSnap!==newSnap||prevAllSnap!==newAllSnap) renderPage();
+    // Always re-render — scroll position is preserved
+    renderPage();
   }catch(e){console.log("poll error",e);}
 }
 function startSubPolling(){
