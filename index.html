@@ -754,7 +754,7 @@ async function substituteSession(date, groupId){
             return;
           }
           if(!sess){const res=await dbP("sessions",{group_id:groupId,date,substitute_coach_id:me.id});sess=res[0];A.sessions.push(sess);}
-          else{await dbPa("sessions",`id=eq.${sess.id}`,{substitute_coach_id:me.id});sess.substitute_coach_id=me.id;}
+          else{await dbPa("sessions",`id=eq.${sess.id}`,{substitute_coach_id:me.id,admin_approved:null});sess.substitute_coach_id=me.id;sess.admin_approved=null;}
           A.subSessions=A.subSessions||[];
           if(!A.subSessions.find(s=>s.id===sess.id))A.subSessions.push(sess);
           // Update button visually without full re-render
@@ -879,7 +879,7 @@ async function saveCancelReason(sessId,date,gid,reason){
   const cardEl=document.getElementById("sess-card-"+date+"-"+gid);
   if(cardEl){const r=cardEl.querySelector(".cancel-reason-row");if(r)r.remove();}
   try{
-    await dbPa("sessions","id=eq."+sessId,{cancelled:true,cancel_reason:reason.trim()||null});
+    await dbPa("sessions","id=eq."+sessId,{cancelled:true,cancel_reason:reason.trim()||null,admin_approved:null});
     sess.cancelled=true;sess.cancel_reason=reason.trim()||null;
     A.cancellations[sessId]=true;
     renderPage();toast("⚠️ פעילות סומנה כדחויה");
@@ -1212,7 +1212,7 @@ function rSchedule(isAdmin=false){
         ${items.length===0?`<div style="font-size:12px;color:var(--muted);padding:6px 0 2px;padding-right:4px">אין פעילות</div>`
         :items.map(({g,coach,isMe})=>`
           <div id="sess-card-${ds}-${g.id}" style="background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;border-right:3px solid ${g.color};${isMe||isAdmin?"":"opacity:0.55"}overflow:hidden">
-            ${(function(){var _s=A.sessions.find(function(x){return x.date===ds&&x.group_id===g.id;});return (_s&&_s.cancelled?'<div style="background:rgba(245,158,11,0.1);padding:4px 12px;font-size:11px;font-weight:700;color:#f59e0b;border-bottom:1px solid rgba(245,158,11,0.2)">'+"⚠️ פעילות נדחתה"+(_s.cancel_reason?" · "+esc(_s.cancel_reason):"")+'</div>':"") + (_s&&_s.substitute_coach_id?(function(){var _sub=(A.allCoaches||[]).find(function(x){return x.id===_s.substitute_coach_id;});return '<div style="background:rgba(167,139,250,0.1);padding:4px 12px;font-size:11px;font-weight:700;color:#a78bfa;border-bottom:1px solid rgba(167,139,250,0.2)" class="sub-bar-inner">🔄 מחליף: '+esc(_sub?_sub.name:"")+'</div>';})():"")})()}
+            ${(function(){var _s=A.sessions.find(function(x){return x.date===ds&&x.group_id===g.id;});return (_s&&_s.cancelled?'<div style="background:rgba(245,158,11,0.1);padding:4px 12px;font-size:11px;font-weight:700;color:#f59e0b;border-bottom:1px solid rgba(245,158,11,0.2)">'+"⚠️ פעילות נדחתה"+(_s.cancel_reason?" · "+esc(_s.cancel_reason):"")+(_s.admin_approved===true?" ✓ מאושר":_s.admin_approved===false?" ✗ לא אושר":" · ממתין לאישור מנהל")+'</div>':"") + (_s&&_s.substitute_coach_id?(function(){var _sub=(A.allCoaches||[]).find(function(x){return x.id===_s.substitute_coach_id;});return '<div style="background:rgba(167,139,250,0.1);padding:4px 12px;font-size:11px;font-weight:700;color:#a78bfa;border-bottom:1px solid rgba(167,139,250,0.2)" class="sub-bar-inner">🔄 מחליף: '+esc(_sub?_sub.name:"")+'</div>';})():"")})()}
             <div style="display:flex;align-items:center;gap:10px;padding:10px 12px">
               <div style="width:8px;height:8px;border-radius:50%;background:${g.color};flex-shrink:0"></div>
               <div style="flex:1;min-width:0">
@@ -1908,6 +1908,17 @@ function rHistory(){
 
 // ── ADMIN VIEWS ───────────────────────────────────────────────
 
+async function approveSession(sessId, approved){
+  try{
+    await dbPa("sessions","id=eq."+sessId,{admin_approved:approved});
+    const s=(A.allSessions||[]).find(x=>x.id===sessId);
+    if(s) s.admin_approved=approved;
+    renderPage();
+    toast(approved?"✅ אושר":"❌ לא אושר");
+  }catch(e){toast("❌ "+e.message);}
+}
+
+
 function rAdminMonthly(){
   const now=new Date();
   const yr=A.adminYear||now.getFullYear();
@@ -2006,6 +2017,28 @@ function rAdminMonthly(){
       <div class="sc" style="cursor:pointer" onclick="nav('admin-substitutions')"><div class="si">🔄</div><div class="sv" style="color:#a78bfa">${(()=>{return A.allSessions.filter(s=>s.substitute_coach_id).length;})()}</div><div class="sl">החלפות</div></div>
       <div class="sc" style="cursor:pointer" onclick="nav('admin-absences')"><div class="si">🚫</div><div class="sv" style="color:#ef4444">${(()=>{let tot=0;const mnSess=A.allSessions.filter(s=>!s.cancelled);mnSess.forEach(s=>{const att=A.allAttendance[s.id]||{};tot+=Object.values(att).filter(v=>v===false).length;});return tot;})()}</div><div class="sl">חיסורים</div></div>
     </div>
+    ${(()=>{
+      const pending=(A.allSessions||[]).filter(s=>(s.cancelled||s.substitute_coach_id)&&s.admin_approved===null);
+      if(!pending.length)return "";
+      const rows=pending.map(s=>{
+        const g=(A.allGroups||[]).find(x=>x.id===s.group_id);
+        const coach=(A.allCoaches||[]).find(x=>x.id===g?.coach_id);
+        const sub=s.substitute_coach_id?(A.allCoaches||[]).find(x=>x.id===s.substitute_coach_id):null;
+        const d=new Date(s.date+"T12:00:00");
+        const dayStr=d.toLocaleDateString("he-IL",{weekday:"short",day:"numeric",month:"numeric"});
+        const type=s.cancelled?"⚠️ דחייה":"🔄 החלפה";
+        const detail=s.cancelled?(s.cancel_reason||"ללא סיבה"):(sub?"→ "+sub.name:"");
+        return "<div style=\"display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid rgba(245,158,11,0.15)\">"
+          +"<div style=\"flex:1\"><div style=\"font-size:13px;font-weight:700\">"+type+" · "+esc(g?.name||"")+" · "+dayStr+"</div>"
+          +"<div style=\"font-size:11px;color:var(--muted)\">"+esc(coach?.name||"")+" · "+esc(detail)+"</div></div>"
+          +"<button class=\"btn btn-sm\" style=\"background:rgba(34,197,94,0.15);color:var(--green);border:1px solid rgba(34,197,94,0.3);padding:4px 10px\" onclick=\"approveSession(\'"+s.id+"\',true)\">✓ אשר</button>"
+          +" <button class=\"btn btn-sm\" style=\"background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);padding:4px 10px\" onclick=\"approveSession(\'"+s.id+"\',false)\">✗ דחה</button>"
+          +"</div>";
+      }).join("");
+      return "<div style=\"background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:14px 16px;margin-bottom:14px\">"
+        +"<div style=\"font-size:14px;font-weight:800;color:#f59e0b;margin-bottom:10px\">🔔 ממתינים לאישורך ("+pending.length+")</div>"
+        +rows+"</div>";
+    })()}
     <div style="display:flex;gap:8px;margin-bottom:14px">
       <button class="filter-btn ${A.adminView==='agenda'?'active':''}" onclick="A.adminView='agenda';renderPage()">📋 רשימה</button>
       <button class="filter-btn ${A.adminView==='calendar'?'active':''}" onclick="A.adminView='calendar';renderPage()">📅 לוח</button>
