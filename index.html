@@ -382,7 +382,7 @@ async function pollSubstitutes(){
       (!A.isAdmin&&A.dbCoachId)?dbG("sessions",`substitute_coach_id=eq.${A.dbCoachId}`):[]
     ]);
     // Snapshot before update
-    const prevSnap=JSON.stringify((A.sessions||[]).map(s=>({id:s.id,sub:s.substitute_coach_id,cancelled:s.cancelled})).sort((a,b)=>a.id>b.id?1:-1));
+    const prevSnap=JSON.stringify((A.sessions||[]).map(s=>({id:s.id,sub:s.substitute_coach_id,cancelled:s.cancelled,approved:s.admin_approved})).sort((a,b)=>a.id>b.id?1:-1));
     const prevSubSnap=JSON.stringify((A.subSessions||[]).map(s=>s.id).sort());
     // Apply updates - merge all fetched sessions
     [...ownSess,...subSess].forEach(s=>{
@@ -392,7 +392,7 @@ async function pollSubstitutes(){
     });
     A.subSessions=subSess;
     // Compare after update
-    const newSnap=JSON.stringify((A.sessions||[]).map(s=>({id:s.id,sub:s.substitute_coach_id,cancelled:s.cancelled})).sort((a,b)=>a.id>b.id?1:-1));
+    const newSnap=JSON.stringify((A.sessions||[]).map(s=>({id:s.id,sub:s.substitute_coach_id,cancelled:s.cancelled,approved:s.admin_approved})).sort((a,b)=>a.id>b.id?1:-1));
     const newSubSnap=JSON.stringify((A.subSessions||[]).map(s=>s.id).sort());
     if(prevSnap!==newSnap||prevSubSnap!==newSubSnap) renderPage();
   }catch(e){console.log("poll error",e);}
@@ -1212,7 +1212,7 @@ function rSchedule(isAdmin=false){
         ${items.length===0?`<div style="font-size:12px;color:var(--muted);padding:6px 0 2px;padding-right:4px">אין פעילות</div>`
         :items.map(({g,coach,isMe})=>`
           <div id="sess-card-${ds}-${g.id}" style="background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;border-right:3px solid ${g.color};${isMe||isAdmin?"":"opacity:0.55"}overflow:hidden">
-            ${(function(){var _s=A.sessions.find(function(x){return x.date===ds&&x.group_id===g.id;});return (_s&&_s.cancelled?'<div style="background:rgba(245,158,11,0.1);padding:4px 12px;font-size:11px;font-weight:700;color:#f59e0b;border-bottom:1px solid rgba(245,158,11,0.2)">'+"⚠️ פעילות נדחתה"+(_s.cancel_reason?" · "+esc(_s.cancel_reason):"")+(_s.admin_approved===true?" <span style='color:var(--green)'>✓ מאושר</span>":_s.admin_approved===false?" <span style='color:#ef4444'>✗ לא אושר</span>":" · <span style='color:#f59e0b'>ממתין לאישור מנהל</span>")+'</div>':"") + (_s&&_s.substitute_coach_id?(function(){var _sub=(A.allCoaches||[]).find(function(x){return x.id===_s.substitute_coach_id;});return '<div style="background:rgba(167,139,250,0.1);padding:4px 12px;font-size:11px;font-weight:700;color:#a78bfa;border-bottom:1px solid rgba(167,139,250,0.2)" class="sub-bar-inner">🔄 מחליף: '+esc(_sub?_sub.name:"")+(_s.admin_approved===true?' · <span style="color:var(--green)">✓ מאושר</span>':_s.admin_approved===false?' · <span style="color:#ef4444">✗ לא אושר</span>':' · <span style="color:#f59e0b">ממתין לאישור</span>')+'</div>';})():"")})()}
+            ${(function(){var _s=A.sessions.find(function(x){return x.date===ds&&x.group_id===g.id;});return (_s&&_s.cancelled?'<div style="background:rgba(245,158,11,0.1);padding:4px 12px;font-size:11px;font-weight:700;color:#f59e0b;border-bottom:1px solid rgba(245,158,11,0.2)">'+"⚠️ פעילות נדחתה"+(_s.cancel_reason?" · "+esc(_s.cancel_reason):"")+(_s.admin_approved===true?" <span style='color:var(--green)'>✓ מאושר</span>":_s.admin_approved===false?" <span style='color:#ef4444'>✗ לא אושר</span>":" · <span style='color:#f59e0b'>ממתין לאישור</span>")+'</div>':"") + (_s&&_s.substitute_coach_id?(function(){var _sub=(A.allCoaches||[]).find(function(x){return x.id===_s.substitute_coach_id;});return '<div style="background:rgba(167,139,250,0.1);padding:4px 12px;font-size:11px;font-weight:700;color:#a78bfa;border-bottom:1px solid rgba(167,139,250,0.2)" class="sub-bar-inner">🔄 מחליף: '+esc(_sub?_sub.name:"")+(_s.admin_approved===true?' · <span style="color:var(--green)">✓ מאושר</span>':_s.admin_approved===false?' · <span style="color:#ef4444">✗ לא אושר</span>':' · <span style="color:#f59e0b">ממתין לאישור</span>')+'</div>';})():"")})()}
             <div style="display:flex;align-items:center;gap:10px;padding:10px 12px">
               <div style="width:8px;height:8px;border-radius:50%;background:${g.color};flex-shrink:0"></div>
               <div style="flex:1;min-width:0">
@@ -2018,7 +2018,7 @@ function rAdminMonthly(){
       <div class="sc" style="cursor:pointer" onclick="nav('admin-absences')"><div class="si">🚫</div><div class="sv" style="color:#ef4444">${(()=>{let tot=0;const mnSess=A.allSessions.filter(s=>!s.cancelled);mnSess.forEach(s=>{const att=A.allAttendance[s.id]||{};tot+=Object.values(att).filter(v=>v===false).length;});return tot;})()}</div><div class="sl">חיסורים</div></div>
     </div>
     ${(()=>{
-      const pending=(A.allSessions||[]).filter(s=>(s.cancelled||s.substitute_coach_id)&&s.admin_approved===null);
+      const allS=[...(A.allSessions||[]),...(A.sessions||[]).filter(s=>!(A.allSessions||[]).find(x=>x.id===s.id))];const pending=allS.filter(s=>(s.cancelled||s.substitute_coach_id)&&s.admin_approved===null);
       if(!pending.length)return "";
       const rows=pending.map(s=>{
         const g=(A.allGroups||[]).find(x=>x.id===s.group_id);
