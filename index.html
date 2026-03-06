@@ -160,7 +160,7 @@ const DS=["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","ש׳"];
 const DL=["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
 
 function egf(){return{name:"",color:COLORS[0],days_of_week:[],start_time:"",end_time:"",start_date:"",coach_id:""};}
-let A={
+let A=window.A={
   coach:null,isAdmin:false,
   groups:[],sailors:[],sessions:[],attendance:{},
   allCoaches:[],allGroups:[],allSailors:[],allSessions:[],allAttendance:{},workHours:[],adminMonth:new Date().getMonth(),adminYear:new Date().getFullYear(),adminView:"agenda",adminDayDetail:null,prevView:null,absenceReasons:{},
@@ -381,15 +381,15 @@ async function pollSubstitutes(){
       myGIds.length?dbG("sessions",`group_id=in.(${myGIds.join(",")})`):[],
       (!A.isAdmin&&A.dbCoachId)?dbG("sessions",`substitute_coach_id=eq.${A.dbCoachId}`):(A.isAdmin?dbG("sessions","substitute_coach_id=not.is.null"):[])
     ]);
-    // Snapshot before update
-    const prevSnap=JSON.stringify((A.sessions||[]).map(s=>({id:s.id,sub:s.substitute_coach_id,cancelled:s.cancelled,approved:s.admin_approved})).sort((a,b)=>a.id>b.id?1:-1));
-    const prevSubSnap=JSON.stringify((A.subSessions||[]).map(s=>s.id).sort());
+    // Snapshot of current state BEFORE applying fetched data
+    const snapFn=arr=>JSON.stringify((arr||[]).map(s=>({id:s.id,sub:s.substitute_coach_id,cancelled:s.cancelled,approved:s.admin_approved})).sort((a,b)=>a.id>b.id?1:-1));
+    const prevSnap=snapFn(A.sessions);
+    const prevAllSnap=snapFn(A.allSessions);
     // Apply updates - merge all fetched sessions
     [...ownSess,...subSess].forEach(s=>{
       const existing=A.sessions.find(x=>x.id===s.id);
       if(existing) Object.assign(existing,s);
       else A.sessions.push(s);
-      // also update allSessions for admin overview
       if(A.allSessions){
         const ex2=A.allSessions.find(x=>x.id===s.id);
         if(ex2) Object.assign(ex2,s);
@@ -397,10 +397,10 @@ async function pollSubstitutes(){
       }
     });
     A.subSessions=subSess;
-    // Compare after update
-    const newSnap=JSON.stringify((A.sessions||[]).map(s=>({id:s.id,sub:s.substitute_coach_id,cancelled:s.cancelled,approved:s.admin_approved})).sort((a,b)=>a.id>b.id?1:-1));
-    const newSubSnap=JSON.stringify((A.subSessions||[]).map(s=>s.id).sort());
-    if(prevSnap!==newSnap||prevSubSnap!==newSubSnap) renderPage();
+    // Compare after applying
+    const newSnap=snapFn(A.sessions);
+    const newAllSnap=snapFn(A.allSessions);
+    if(prevSnap!==newSnap||prevAllSnap!==newAllSnap) renderPage();
   }catch(e){console.log("poll error",e);}
 }
 function startSubPolling(){
