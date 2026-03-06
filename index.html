@@ -137,6 +137,17 @@ select option{background:#0d2444}
   </nav>
 </div>
 <div class="toast" id="toast"></div>
+<div id="cancel-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;width:300px;max-width:90vw">
+    <h3 style="font-size:16px;font-weight:800;margin:0 0 16px">⚠️ דחיית פעילות</h3>
+    <input id="cancel-reason-input" type="text" placeholder="סיבת דחייה (אופציונלי)..." 
+      style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.07);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--text);direction:rtl;margin-bottom:16px"/>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-g" style="flex:1" onclick="closeCancelModal()">ביטול</button>
+      <button class="btn" style="flex:1;background:linear-gradient(135deg,#f59e0b,#d97706);color:white" onclick="confirmCancel()">⚠️ דחה</button>
+    </div>
+  </div>
+</div>
 <div id="sub-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;display:none;align-items:center;justify-content:center">
   <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;width:300px;max-width:90vw">
     <h3 style="font-weight:800;font-size:18px;margin-bottom:16px">🔄 בחר מדריך מחליף</h3>
@@ -853,8 +864,24 @@ async function quickCancel(date,gid){
     }catch(e){toast("❌ "+e.message);}
     return;
   }
-  var reason=prompt("סיבת דחייה (אופציונלי):");
-  if(reason===null)return;
+  // Show cancel modal
+  A._cancelSess=sess;
+  const modal=document.getElementById("cancel-modal");
+  if(modal){
+    document.getElementById("cancel-reason-input").value="";
+    modal.style.display="flex";
+    setTimeout(()=>document.getElementById("cancel-reason-input").focus(),100);
+  }
+}
+function closeCancelModal(){
+  const modal=document.getElementById("cancel-modal");
+  if(modal)modal.style.display="none";
+  A._cancelSess=null;
+}
+async function confirmCancel(){
+  const sess=A._cancelSess;if(!sess)return;
+  const reason=document.getElementById("cancel-reason-input").value.trim();
+  closeCancelModal();
   try{
     await dbPa("sessions","id=eq."+sess.id,{cancelled:true,cancel_reason:reason||null});
     sess.cancelled=true;sess.cancel_reason=reason||null;
