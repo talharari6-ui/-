@@ -1225,7 +1225,7 @@ function rSchedule(isAdmin=false){
               <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:var(--green);font-size:12px;font-weight:700;cursor:pointer" onclick="openSession('${ds}','${g.id}')" ${(function(){var _sx=A.sessions.find(x=>x.date===ds&&x.group_id===g.id);return _sx&&_sx.cancelled?"disabled style='opacity:0.35;cursor:not-allowed;pointer-events:none'":""})()}>✅ נוכחות</button>
               <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:#f59e0b;font-size:12px;font-weight:700;cursor:pointer" onclick="quickCancel('${ds}','${g.id}')">⚠️ דחייה</button>
               <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:#a78bfa;font-size:12px;font-weight:700;cursor:pointer" data-sub-gid="${g.id}" data-sub-date="${ds}" onclick="substituteSession('${ds}','${g.id}')">🔄 החלפה</button>
-              <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:var(--blue-light);font-size:12px;font-weight:700;cursor:pointer" onclick="A.activeGroupId='${g.id}';A.activeDate='${ds}';A.prevSubView=A.subView||null;A.subView='assignSailors';renderPage()">👥 הוסף/הסר חניך</button>
+              <button style="flex:1;padding:9px 4px;background:none;border:none;border-left:1px solid var(--border);color:var(--blue-light);font-size:12px;font-weight:700;cursor:pointer" onclick="A.activeGroupId='${g.id}';A.activeDate='${ds}';A.prevSubView=null;A.prevView=A.view;A.subView='assignSailors';renderPage()">👥 הוסף/הסר חניך</button>
               <button style="flex:1;padding:9px 4px;background:none;border:none;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer" onclick="A.activeGroupId='${g.id}';A.activeDate='${ds}';A.subView='groupDetail';renderPage()">📋 פרטי קבוצה</button>
             </div>
           </div>`).join("")}
@@ -1676,7 +1676,7 @@ function rGroupDetail(){
 function rAssign(){
   const g=getG(A.activeGroupId);if(!g){goBack();return"";}
   return`
-    <button class="bbtn" onclick="A.subView=A.prevSubView||'groupDetail';A.prevSubView=null;renderPage()">← חזרה</button>
+    <button class="bbtn" onclick="if(A.prevView&&!A.prevSubView){const v=A.prevView;A.prevView=null;A.subView=null;A.view=v;renderPage();}else{A.subView=A.prevSubView||'groupDetail';A.prevSubView=null;renderPage();}">← חזרה</button>
     <h2 style="font-size:18px;font-weight:800;margin-bottom:4px">שיוך חניכים ל-${esc(g.name)}</h2>
     <p style="color:var(--muted);font-size:12px;margin-bottom:16px">לחץ להוספה/הסרה</p>
     <button class="btn btn-p btn-sm" style="margin-bottom:14px" onclick="A.form=ef();A.editId=null;A.subView='addSailor';renderPage()">+ חניך חדש</button>
