@@ -382,7 +382,7 @@ async function pollSubstitutes(){
       A.dbCoachId?dbG("sessions",`substitute_coach_id=eq.${A.dbCoachId}`):[]
     ]);
     // Snapshot before update
-    const prevSnap=JSON.stringify((A.sessions||[]).map(s=>({id:s.id,sub:s.substitute_coach_id})).sort((a,b)=>a.id>b.id?1:-1));
+    const prevSnap=JSON.stringify((A.sessions||[]).map(s=>({id:s.id,sub:s.substitute_coach_id,cancelled:s.cancelled})).sort((a,b)=>a.id>b.id?1:-1));
     const prevSubSnap=JSON.stringify((A.subSessions||[]).map(s=>s.id).sort());
     // Apply updates - merge all fetched sessions
     [...ownSess,...subSess].forEach(s=>{
@@ -392,7 +392,7 @@ async function pollSubstitutes(){
     });
     A.subSessions=subSess;
     // Compare after update
-    const newSnap=JSON.stringify((A.sessions||[]).map(s=>({id:s.id,sub:s.substitute_coach_id})).sort((a,b)=>a.id>b.id?1:-1));
+    const newSnap=JSON.stringify((A.sessions||[]).map(s=>({id:s.id,sub:s.substitute_coach_id,cancelled:s.cancelled})).sort((a,b)=>a.id>b.id?1:-1));
     const newSubSnap=JSON.stringify((A.subSessions||[]).map(s=>s.id).sort());
     if(prevSnap!==newSnap||prevSubSnap!==newSubSnap) renderPage();
   }catch(e){console.log("poll error",e);}
