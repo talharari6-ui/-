@@ -1961,9 +1961,13 @@ async function approveSession(sessId, approved){
       const targetCoachId=s.substitute_coach_id||g?.coach_id;
       if(targetCoachId){
         const isSub=!!s.substitute_coach_id;
+        const g2=(A.allGroups||[]).find(x=>x.id===s.group_id);
+        const d=new Date((s.date||"")+"T12:00:00");
+        const dateStr=s.date?d.toLocaleDateString("he-IL",{weekday:"short",day:"numeric",month:"numeric"}):"";
+        const groupName=g2?.name||"";
         const msg=isSub
-          ?(approved?"בקשת ההחלפה שלך אושרה ✓":"בקשת ההחלפה שלך נדחתה ✗")
-          :(approved?"דחיית הפעילות אושרה ✓":"דחיית הפעילות לא אושרה ✗");
+          ?(approved?"בקשת ההחלפה אושרה ✓ — "+groupName+" · "+dateStr:"בקשת ההחלפה נדחתה ✗ — "+groupName+" · "+dateStr)
+          :(approved?"דחיית הפעילות אושרה ✓ — "+groupName+" · "+dateStr:"דחיית הפעילות לא אושרה ✗ — "+groupName+" · "+dateStr);
         await createNotification(targetCoachId, sessId, approved?"approved":"rejected", msg);
       }
     }
